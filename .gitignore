@@ -46,3 +46,4 @@ next-env.d.ts
 # 只有裁剪产物 public/fonts/*.woff2 入库。
 /fonts/src/
 /cache/
+.storage/
