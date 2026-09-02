@@ -1,5 +1,5 @@
 /**
- * 可见性矩阵 —— 保密的唯一实现。权威定义见 project-design.md §3.1。
+ * 可见性矩阵：保密的唯一实现。权威定义见 project-design.md §3.1。
  *
  * 这个文件和 settle.ts 是全项目仅有的两处「错了会很惨」的逻辑：
  * 一个算错发错钱，一个写错泄露任务。所以两者都是无 IO 的纯函数，
@@ -69,7 +69,7 @@ export function canSeeTaskContent(v: Viewer, a: AssignmentFacts): boolean {
 /**
  * 「谁执行谁的题」这个映射关系。
  *
- * 对所有人都是 settled 后才可见 —— **包括出题者本人**。
+ * 对所有人都是 settled 后才可见：**包括出题者本人**。
  * 执行者知道自己领了一道题，但不知道是谁出的，这不算知道映射关系。
  */
 export function canSeeAssignmentMapping(v: Viewer, a: AssignmentFacts): boolean {

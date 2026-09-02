@@ -27,7 +27,7 @@ export function retriesForTier(tier: StructuredOutputTier): number {
  * 从模型输出里抠出 JSON。
  *
  * 按可靠性排序尝试：整体解析 -> ``` 围栏内 -> 第一个平衡的 {} 或 []。
- * 最后一档要真正做括号配对，不能用正则贪婪匹配 —— 字符串字面量里的
+ * 最后一档要真正做括号配对，不能用正则贪婪匹配：字符串字面量里的
  * 花括号会把正则带偏（比如任务文案里出现「{」）。
  */
 export function extractJson(raw: string): string | null {

@@ -1,14 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * 整块涂黑的任务卡内容。规格见 DESIGN.md §6.1。
  *
  * 两种手势防的不是同一个威胁：
- *   按住 800ms  全文显示，松手瞬间盖回 —— 防「什么时候看」，你自己挑安全时机
- *   点一下      逐字显示、逐字渐隐     —— 防「被瞟一眼」，任何瞬间只有约 7 个字在屏上
- *   播放中再点  立刻全清               —— 急停。有人凑过来时的唯一出路
+ *   按住 800ms  全文显示，松手瞬间盖回：防「什么时候看」，你自己挑安全时机
+ *   点一下      逐字显示、逐字渐隐    ：防「被瞟一眼」，任何瞬间只有约 7 个字在屏上
+ *   播放中再点  立刻全清              ：急停。有人凑过来时的唯一出路
  *
  * 必须整块盖，绝不能只盖关键词：留着「在包厢里，让 ██ 的人主动唱一首 ██」这样的骨架，
  * 邻座扫一眼就能补全。部分防窥等于没有防窥。
@@ -23,7 +23,7 @@ const TAIL_MS = 500;
 /**
  * 按书写单元切分，不按字符。
  *
- * 中文一字一个单元，但连续的 ASCII 字母数字要合成一个单元 ——
+ * 中文一字一个单元，但连续的 ASCII 字母数字要合成一个单元 ：
  * 「API」一个字母一个字母冒出来是坏的。字素簇同时正确处理 emoji 和组合字符
  * （否则 emoji 的代理对会被拆成两个乱码单元）。
  */
@@ -79,6 +79,8 @@ export interface RedactedProps {
   className?: string;
   /** 手势状态变化时回调，用于外层更新提示文案 */
   onModeChange?: (mode: "idle" | "typing" | "hold") => void;
+  /** 事件日志，真机排查用。生产环境不传 */
+  onEvent?: (line: string) => void;
 }
 
 export default function Redacted({
@@ -87,9 +89,24 @@ export default function Redacted({
   dwellMs = DEFAULT_DWELL_MS,
   className,
   onModeChange,
+  onEvent,
 }: RedactedProps) {
   const units = useMemo(() => segmentUnits(text), [text]);
   const widths = useMemo(() => barWidths(units.length), [units.length]);
+
+  /**
+   * 挂载后才渲染文字 spans。两个原因，都很实在：
+   *
+   * 1. **避免 hydration mismatch。** Intl.Segmenter 在服务端（Node 的 ICU）
+   *    和各家手机浏览器的 ICU 上可能切出不同的单元数，span 数量对不上就是
+   *    hydration 失败。失败之后 React 不接管，页面看着正常但一个监听都没绑，
+   *    表现就是「点和按都完全没反应」。
+   *
+   * 2. **避免 JS 接管前闪一下全文。** SSR 把全文渲染出来的话，
+   *    首屏到 hydration 之间有一个窗口是全文可见的，那是防窥的破绽。
+   */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -128,9 +145,10 @@ export default function Redacted({
           bars.style.opacity = mode === "idle" ? "1" : "0";
         }
       }
+      onEvent?.(`mode=${mode}`);
       onModeChange?.(mode);
     },
-    [onModeChange],
+    [onModeChange, onEvent],
   );
 
   const clearTyping = useCallback(() => {
@@ -146,7 +164,7 @@ export default function Redacted({
     clearTyping();
     typing.current = true;
     setMode("typing");
-    // 逐字的时序是安全机制不是装饰。减弱动效只去掉渐变，时序原样保留 ——
+    // 逐字的时序是安全机制不是装饰。减弱动效只去掉渐变，时序原样保留 ：
     // 绝不能因为用户开了减弱动效就把全文一次性显示出来。
     const instant = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     unitRefs.current.forEach((el, i) => {
@@ -168,7 +186,13 @@ export default function Redacted({
 
   const onDown = useCallback(
     (e: React.PointerEvent | React.KeyboardEvent) => {
-      if ("cancelable" in e && e.cancelable) e.preventDefault();
+      // 只对鼠标和键盘 preventDefault（挡掉拖拽选中）。
+      // 触摸上不要拦：iOS Safari 里 pointerdown 被 preventDefault 之后
+      // 可能不再补发 pointerup，手势就整个死了。
+      // 触摸的滚动和长按菜单由 CSS 的 touch-action / user-select /
+      // -webkit-touch-callout 负责，不需要靠 preventDefault。
+      const isTouch = "pointerType" in e && e.pointerType === "touch";
+      if (!isTouch && "cancelable" in e && e.cancelable) e.preventDefault();
       if (holdTimer.current !== null) return;
       progressRef.current?.setAttribute("data-filling", "1");
       holdTimer.current = window.setTimeout(() => {
@@ -207,6 +231,22 @@ export default function Redacted({
     clearTyping();
   }, [clearTyping]);
 
+  /**
+   * pointerleave 只对鼠标算「移出取消」。
+   *
+   * 触摸设备上，pointerup 之后浏览器会紧接着补发 pointerout / pointerleave
+   * （触摸指针抬起后就被移除了）。如果照单全收，onUp 刚启动的逐字动画会被
+   * 立刻清掉，表现就是「点了完全没反应」。
+   * 鼠标上 pointerleave 只在真的移出元素时才触发，所以桌面测不出来。
+   */
+  const onLeave = useCallback(
+    (e: React.PointerEvent) => {
+      onEvent?.(`leave(${e.pointerType})`);
+      if (e.pointerType === "mouse") onCancel();
+    },
+    [onCancel, onEvent],
+  );
+
   // 卸载时清掉所有定时器，否则组件消失后还在改已经不存在的节点
   useEffect(() => {
     return () => {
@@ -231,12 +271,23 @@ export default function Redacted({
       tabIndex={0}
       role="button"
       aria-label="点击逐字显示任务，长按显示全文"
-      onPointerDown={onDown}
-      onPointerUp={onUp}
-      onPointerLeave={onCancel}
-      onPointerCancel={onCancel}
-      onContextMenu={(e) => e.preventDefault()}
-      onBlur={onCancel}
+      onPointerDown={(e) => {
+        onEvent?.(`down(${e.pointerType})`);
+        onDown(e);
+      }}
+      onPointerUp={(e) => {
+        onEvent?.(`up(${e.pointerType})`);
+        onUp();
+      }}
+      onPointerLeave={onLeave}
+      onPointerCancel={(e) => {
+        onEvent?.(`cancel(${e.pointerType})`);
+        onCancel();
+      }}
+      onContextMenu={(e) => {
+        onEvent?.("contextmenu");
+        e.preventDefault();
+      }}
       onKeyDown={(e) => {
         if ((e.key === "Enter" || e.key === " ") && !e.repeat) onDown(e);
       }}
@@ -251,18 +302,27 @@ export default function Redacted({
           长按是无障碍路径，打字机是纯视觉的可选模式。 */}
       <span className="sr-only">{text}</span>
 
-      <p className="m-0 text-[15px] leading-[1.9] text-bright" aria-hidden="true">
-        {units.map((u, i) => (
-          <span
-            key={i}
-            ref={(el) => {
-              unitRefs.current[i] = el;
-            }}
-            className="rdt-unit"
-          >
-            {u}
-          </span>
-        ))}
+      {/* SSR 阶段没有文字，高度会塌掉导致挂载时跳版。
+          按行数预留出最终高度：15px 字号 x 1.9 行高 = 28.5px 一行 */}
+      <p
+        className="m-0 text-[15px] leading-[1.9] text-bright"
+        style={{ minHeight: `${widths.length * 28.5}px` }}
+        aria-hidden="true"
+      >
+        {mounted
+          ? units.map((u, i) => (
+              <span
+                key={i}
+                ref={(el) => {
+                  unitRefs.current[i] = el;
+                }}
+                className="rdt-unit"
+              >
+                {u}
+              </span>
+            ))
+          : // SSR 阶段只占位，不渲染任何文字。高度靠黑条撑住
+            null}
       </p>
 
       <div className="rdt-bars" aria-hidden="true">

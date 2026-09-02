@@ -17,7 +17,7 @@ import { activities, assignments, participants, tasks } from "../schema";
  *
  * **每一步都必须幂等。** scheduler 每 30s 扫一次，进程可能重启、可能有多个实例，
  * 同一个活动的同一次推进随时可能被触发两次。
- * 所有推进都走 `UPDATE ... WHERE status = $expected`，拿到行才继续 ——
+ * 所有推进都走 `UPDATE ... WHERE status = $expected`，拿到行才继续 ：
  * 拿不到行说明别人已经推过了，直接返回，不报错。
  *
  * 重复分配和重复发钱是这个项目最不能出的两种错。

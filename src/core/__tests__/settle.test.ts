@@ -123,7 +123,7 @@ describe('settle 作废命中', () => {
 
   it('出题人猜中自己出的题：不触发 busted，不占名次', () => {
     // a1 由 b 出题、a 执行。b 猜中 a 应当作废，
-    // 且不能占掉第一名的位置 —— c 才是第一名，拿 0.5 不是 0.3。
+    // 且不能占掉第一名的位置：c 才是第一名，拿 0.5 不是 0.3。
     const result = run(
       [
         { targetPid: 'a', guesserPid: 'b', hit: true, createdAt: 1 },

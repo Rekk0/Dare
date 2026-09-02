@@ -25,7 +25,7 @@ export function bountyTiersToMilliShares(bountyTiers: readonly number[] = DEFAUL
  *
  * 2. 执行者猜自己领的任务（`guesserPid === targetPid`）。
  *    他当然知道自己的任务。如果他知道自己完不成、公投必然过不了（拿 0 份），
- *    就可以去猜自己把自己搞成 busted，然后以第一名领 0.5 份 —— 把 0 变成 0.5。
+ *    就可以去猜自己把自己搞成 busted，然后以第一名领 0.5 份：把 0 变成 0.5。
  *    这是真能套利的，必须堵。
  */
 export function isVoidedHit(guess: Guess, targetAuthorPid: string): boolean {

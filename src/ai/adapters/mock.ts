@@ -9,7 +9,7 @@ import type {
 import { parseAndValidate } from "../validate";
 
 /**
- * MockProvider —— 不是可选项，是必需品。
+ * MockProvider：不是可选项，是必需品。
  *
  * CI 和本地开发必须能跑通全部 AI 相关逻辑而不烧钱、不需要 key。
  * 开源项目尤其需要：贡献者 clone 下来就能跑测试。

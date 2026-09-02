@@ -6,7 +6,7 @@ import { assignments, guesses, settlements, tasks } from "../schema";
 /**
  * DB 约束测试。
  *
- * 几条不变量是写进 DB 的，不靠应用层自觉 —— 应用层可以有 bug，
+ * 几条不变量是写进 DB 的，不靠应用层自觉：应用层可以有 bug，
  * 约束不会。这些测试验证约束真的在拦。
  *
  * 用 PGlite 起内存库，每个用例一个，互不污染。
