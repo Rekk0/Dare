@@ -54,41 +54,45 @@ scheduler  30s 轮询推进 activity 状态
 
 ```
 src/
-  core/                    纯业务逻辑，无 IO，可单测
+  core/                    纯业务逻辑，无 IO，可穷举验证
     assign.ts              derangement 分配
+    bounty.ts              命中名次与赏金；isVoidedHit 是两种作废的唯一判定
     settle.ts              结算引擎（守恒的唯一实现）
     visibility.ts          可见性矩阵（保密的唯一实现）
-    bounty.ts              命中名次 → 赏金份额
+    lifecycle.ts           状态推进的纯逻辑与分配名单
+    upload-policy.ts       上传授权与 storage key 生成
     types.ts
   ai/
     types.ts               AiProvider / AiRequest / ProviderCapabilities
-    planner.ts             MediaPlanner：能力 → 媒体处理计划
-    validate.ts            parseAndValidate，跨厂商统一
+    net.ts                 出网设置（IPv4 优先、连接超时、死 IP 重试）
+    planner.ts             MediaPlanner：能力 -> 媒体处理计划
+    validate.ts            三档结构化输出降级，统一 parseAndValidate
     registry.ts            读 providers.yaml，按 route 取 provider
     adapters/
-      google-genai.ts
-      anthropic.ts
-      openai-compatible.ts
-      mock.ts
+      openai-compatible.ts 一个适配器覆盖百炼/智谱/硅基流动等一大片
+      mock.ts              必需品：CI 和贡献者不烧钱不用 key
     tasks/
-      taskReview.ts        prompt + schema + 判定规则
-      evidenceReview.ts
-      guessJudge.ts
+      taskReview.ts        出题预审
+      evidenceReview.ts    证据评审（AI 不判通过与否，只出报告）
+      guessJudge.ts        猜测相似度判定
   db/
-    schema.ts              Drizzle schema
-    migrations/
-    queries/               按聚合分文件，读查询一律经过 visibility
-  jobs/                    BullMQ 定义与 worker
-  app/                     Next.js 路由与页面
+    schema.ts              Drizzle schema，I1/I3/I8 写进 DB 约束
+    client.ts              PGlite 内存库（本地）与真 Postgres（生产）
+    queries/
+      lifecycle.ts         幂等状态推进与分配事务
+      guesses.ts           猜测提交、名次事务、busted 触发
+  storage/
+    types.ts               StoragePort 端口接口
+    local.ts               本地文件系统驱动（HMAC 签名，开发用）
   components/
-    Redacted.tsx           整块涂黑 + 长按擦开（核心组件）
-    BustedScreen.tsx       被识破全屏
-    ...
+    Redacted.tsx           整块涂黑 + 双手势揭示（核心组件）
+    TaskCard.tsx           任务卡，含 busted 态
+  app/                     Next.js 路由与页面
 scripts/
-  providers-check.ts       厂商能力自检
-  subset-fonts.ts          字体子集化
+  providers-check.ts       厂商能力实测（Spike A）
+  subset_fonts.py          字体子集化（Spike B）
+fonts/display-charset.txt  display 字体的显式字符清单
 providers.yaml
-docker-compose.yml
 ```
 
 ### 为什么 `core/` 要独立成无 IO 的纯模块
