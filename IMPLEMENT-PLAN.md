@@ -235,6 +235,48 @@ M6 只是把它接上数据库，但**接的方式决定会不会重复发钱**�
 
 ---
 
+## M6.5 · 接线（把逻辑变成能跑的应用）
+
+> **这一节是补的。** M4/M5/M6 交付的是逻辑层和组件，但同一份计划里
+> M4 的验收标准写着「真机 6 人走一遍」—— 没有 HTTP 层和页面这条根本没法验。
+> 里程碑加起来凑不出计划自己的目标，所以补上这一段。
+
+### 缺的东西
+
+- **零个 API route**。全部业务逻辑都在，但没有任何 HTTP 入口
+- **没有真实页面**，只有 Spike C 的演示页
+- **scheduler 没有运行入口**，`findAdvanceable()` 只有定义没有调用方
+- package.json 里没有 worker / scheduler 脚本
+
+### M6.5a 身份与 API 骨架
+
+- 无注册体系（假设 A4）：设备 token + 昵称 + 6 位邀请码
+- `src/lib/session.ts`：从 cookie 取 device token，解析出 userId
+  **每个 route 都必须先解析出 requesterPid，再把它传给 core/visibility.ts。
+  绝不允许 route 直接读库返回数据。**
+- API routes 照 ARCHITECTURE.md §7.3 的清单实现
+
+### M6.5b scheduler 运行入口
+
+`scripts/scheduler.ts` + `pnpm scheduler`：30s 轮询 `findAdvanceable()`，
+对每个活动调 `advanceActivity()`。**每一步已经是幂等的**，
+所以这个脚本可以随便重启、可以多开。
+
+### M6.5c 页面
+
+按 DESIGN.md 落地：建活动 / 加入 / 出题 / 任务卡 / 上传 / 猜测 / 投票 / 结算。
+组件已经有了，这一步是路由和数据流。
+
+**成功标准**
+
+- [ ] `pnpm dev` + `pnpm scheduler` 两条命令能跑起完整应用
+- [ ] **每个读接口的响应都经过 core/visibility.ts**，不允许 route 里另写过滤
+- [ ] 用 6 个浏览器标签页模拟 6 个人，走通：建活动 → 加入 → 出题 →
+      等分配 → 看任务卡 → 上传 → 猜测 → 投票 → 结算
+- [ ] 全程不需要手动改数据库
+
+---
+
 ## M7 · 开源化收尾
 
 README / LICENSE / `.env.example` / `docker-compose.yml` / `providers:check` 进 CI /
