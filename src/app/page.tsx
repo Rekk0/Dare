@@ -1,108 +1,17 @@
-"use client";
+import TaskCard from "@/components/TaskCard";
+import type { MyAssignmentDto } from "@/core/visibility";
 
-import { useState } from "react";
-import Redacted, { DEFAULT_DWELL_MS, DEFAULT_STEP_MS } from "@/components/Redacted";
-
-/**
- * M0 Spike C 的真机验证页。规格见 DESIGN.md §6.1。
- *
- * 带参数滑杆是刻意的：可见窗口（dwell / step）是这个机制唯一靠手感定的参数，
- * 露太多等于显示半句，露太少要反复重放。必须在真机上调，不能拍脑袋。
- */
-
-const SAMPLE = "在包厢里，想办法让坐你右边的人主动唱一首粤语歌，全程不能提到「唱」这个字。";
-
-const MODE_HINT: Record<string, string> = {
-  idle: "点一下 逐字 · 按住 全显",
-  typing: "再点一下可全清",
-  hold: "松手隐藏",
+const assignment: MyAssignmentDto = {
+  assignmentId: "demo-assignment",
+  taskContent: "想办法让坐在你右边的人主动唱一首粤语歌，全程不能提到唱这个字。",
+  busted: false,
+  bustedByPid: null,
 };
 
-export default function SpikePage() {
-  const [step, setStep] = useState(DEFAULT_STEP_MS);
-  const [dwell, setDwell] = useState(DEFAULT_DWELL_MS);
-  const [mode, setMode] = useState("idle");
-  const windowChars = (dwell / step).toFixed(1);
-  const totalMs = Array.from(SAMPLE).length * step + dwell + 500;
-
+export default function Home() {
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col gap-7 px-5 py-10">
-      <header className="flex flex-none flex-col gap-1">
-        <p className="font-mono text-[10px] tracking-[0.28em] text-mark uppercase">
-          Spike C
-        </p>
-        <h1 className="font-display text-[30px] leading-tight text-bright">
-          任务卡揭示
-        </h1>
-      </header>
-
-      <section className="rounded-2xl border border-line bg-surface p-5">
-        <p className="mb-3 font-mono text-[9px] tracking-[0.2em] text-dim">你的任务</p>
-        <Redacted
-          text={SAMPLE}
-          stepMs={step}
-          dwellMs={dwell}
-          onModeChange={setMode}
-        />
-        <p className="mt-11 text-center font-mono text-[9.5px] tracking-[0.16em] text-dim">
-          {MODE_HINT[mode]}
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-5">
-        <div className="flex items-baseline justify-between">
-          <span className="text-[13px] text-bright">可见窗口</span>
-          <span className="font-mono text-[22px] text-mark tabular-nums">
-            {windowChars} 字
-          </span>
-        </div>
-
-        <label className="flex flex-col gap-2">
-          <span className="flex justify-between font-mono text-[11px] text-dim">
-            <span>出字间隔 step</span>
-            <span className="text-body tabular-nums">{step}ms</span>
-          </span>
-          <input
-            type="range"
-            min={50}
-            max={260}
-            step={10}
-            value={step}
-            onChange={(e) => setStep(Number(e.target.value))}
-            className="accent-[var(--mark)]"
-          />
-        </label>
-
-        <label className="flex flex-col gap-2">
-          <span className="flex justify-between font-mono text-[11px] text-dim">
-            <span>停留 dwell</span>
-            <span className="text-body tabular-nums">{dwell}ms</span>
-          </span>
-          <input
-            type="range"
-            min={300}
-            max={2400}
-            step={50}
-            value={dwell}
-            onChange={(e) => setDwell(Number(e.target.value))}
-            className="accent-[var(--mark)]"
-          />
-        </label>
-
-        <p className="font-mono text-[10.5px] leading-relaxed text-dim tabular-nums">
-          全程 {(totalMs / 1000).toFixed(1)}s · 共 {Array.from(SAMPLE).length} 字
-        </p>
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-5 text-[12.5px] leading-relaxed text-dim">
-        <p className="text-[13px] font-bold text-bright">真机上逐条确认</p>
-        <p>按住 800ms 全显，松手瞬间盖回</p>
-        <p>点一下逐字显示、逐字渐隐</p>
-        <p>播放中再点一下立刻全清</p>
-        <p>长按和点击不误判，滚动时不误触发</p>
-        <p>不唤起系统文本选择、放大镜、右键菜单</p>
-        <p>逐字过程中文字不跳版</p>
-      </section>
+    <main className="mx-auto flex min-h-[100dvh] max-w-[420px] items-center px-5 py-8">
+      <TaskCard assignment={assignment} endAt={new Date(Date.now() + 45 * 60 * 1_000)} />
     </main>
   );
 }

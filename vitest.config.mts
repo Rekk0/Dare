@@ -9,6 +9,7 @@ export default defineConfig({
     },
   },
   test: {
+    environment: "jsdom",
     // PGlite 每个用例起一个内存库，比纯函数测试慢一个量级
     testTimeout: 30_000,
   },
