@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# .env.example 是开源项目的上手说明，必须入库。里面永远只有占位符，没有真 key
+!.env.example
 
 # vercel
 .vercel

@@ -1,0 +1,72 @@
+# AI 厂商配置。caps 是声明，不是事实 ：
+# 用 `pnpm providers:check` 拿真 key 实测，让代码去问厂商到底支不支持，
+# 不靠文档也不靠记忆。厂商能力会随模型换代漂移。
+
+default: dashscope
+
+providers:
+  # 阿里百炼 Qwen3.5-Omni。三家国内平台里唯一一个模型同时吃四种模态的，
+  # 且只有 3.5 这一代支持单次请求传多种非文本模态（图+音+文、视频+图+文）。
+  # 更早的 Qwen-Omni 限制是「文本 + 一种其他模态」，我们的证据评审可能
+  # 一次传 3 张图加一段录音，所以必须锁 3.5。
+  dashscope:
+    adapter: openai-compatible
+    model: qwen3.5-omni
+    apiKeyEnv: DASHSCOPE_API_KEY
+    baseUrlEnv: DASHSCOPE_BASE_URL
+    # 一律用流式。omni 系模型有的强制要求流式，而流式在不要求时也一样能用，
+    # 且长多模态请求不会撞 HTTP 超时。没有理由不开。
+    stream: true
+    caps:
+      media:
+        image: native
+        audio: native
+        video: native
+      limits:
+        maxImages: 2048
+        maxImageBytes: 10485760      # 10 MB
+        maxAudioSeconds: 10800       # 3 小时
+        maxVideoSeconds: 3600        # 1 小时
+        maxVideoBytes: 2147483648    # 2 GB
+        maxInlineBytes: 10485760     # 超过就得走 URL 而不是 base64
+      structuredOutput: json_mode
+      fileUpload: false
+
+  # 智谱作 fallback。GLM-4V 吃图和视频，音频要另调 ASR，
+  # 正好走 MediaPlanner 的 transcode 路径。
+  zhipu:
+    adapter: openai-compatible
+    model: glm-4v-plus
+    apiKeyEnv: ZHIPU_API_KEY
+    baseUrl: https://open.bigmodel.cn/api/paas/v4
+    stream: true
+    caps:
+      media:
+        image: native
+        audio: transcode
+        video: native
+      limits:
+        maxImages: 64
+        maxImageBytes: 5242880
+        maxAudioSeconds: 3600
+        maxVideoSeconds: 300
+        maxVideoBytes: 209715200
+        maxInlineBytes: 5242880
+      structuredOutput: json_mode
+      fileUpload: false
+
+  # 必需品不是可选项：CI 和贡献者 clone 下来要能跑通全部 AI 逻辑，
+  # 不烧钱、不需要 key。
+  mock:
+    adapter: mock
+
+# 按场景路由。预审和猜测是纯文本，用不着多模态；证据评审才需要。
+routes:
+  taskReview: dashscope
+  evidenceReview: dashscope
+  guessJudge: dashscope
+
+# 主 provider 失败时依次降级
+fallback:
+  evidenceReview:
+    - zhipu
