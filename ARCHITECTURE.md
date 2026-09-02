@@ -9,17 +9,24 @@
 
 | 层 | 选型 | 定这个的理由 |
 |---|---|---|
-| 框架 | Next.js 15 App Router + TypeScript | 移动端 Web，扫码即用，无应用商店审核。对「线下临时开一局」是决定性优势 |
+| 框架 | Next.js 16 App Router + TypeScript | 移动端 Web，扫码即用，无应用商店审核。对「线下临时开一局」是决定性优势 |
 | 样式 | Tailwind v4，色值走 CSS 变量 | 变量表见 DESIGN.md §1 |
 | 动效 | `motion/react` | 不引 GSAP：本项目没有滚动叙事需求 |
 | 图标 | `@phosphor-icons/react`，strokeWidth 1.5 | 单一图标族 |
 | 组件 | shadcn/ui 打底，必须改默认圆角/配色/字体 | 不允许原样使用 |
 | 后端 | Next.js Route Handlers（同仓） | N ≤ 12、并发极低，不需要独立服务 |
-| 数据库 | Postgres + Drizzle ORM | 分配和结算需要事务 |
+| 数据库 | Postgres + Drizzle ORM。**本地用 PGlite** | 分配和结算需要事务。见下方「本机没有 docker」 |
 | 对象存储 | S3 兼容（本地 MinIO / 线上 R2） | 预签名直传，大视频不过 app server |
 | 队列 | BullMQ + Redis | AI 调用、媒体处理是慢任务 |
 | AI | 自研 provider 抽象层，默认 Gemini | 开源不绑厂商，见 §4 |
 | 部署 | 单机 Docker Compose | 用户量决定了不需要 k8s |
+
+> **实际落地（2026-09-02）**：Next.js **16.3.4**、Tailwind v4、vitest 4、fast-check 4、
+> drizzle-orm 0.45、@electric-sql/pglite 0.5。
+>
+> **本机没有 docker。** 本地开发与测试用 **PGlite**（Postgres 编译成 WASM，进程内跑，真 Postgres 语义），
+> 生产仍是真 Postgres，**schema 保持 Postgres 方言**，不为迁就 PGlite 改类型。
+> Redis / MinIO 同理推迟到真正需要它们的里程碑（M3 队列、M4 对象存储）再决定怎么替代。
 
 ---
 
@@ -153,12 +160,12 @@ prompt_only  prompt 贴 schema + few-shot，抽 json 块，zod 校验，重试 2
 | # | 不变量 | 强制手段 |
 |---|---|---|
 | I1 | **每题恰好 1 份**：`to_assignee + to_guessers + forfeited = 1` | DB CHECK 约束 + `settle.ts` 单测 |
-| I2 | **全场总额守恒**：`Σ payouts.total + Σ forfeited = N` | 结算后断言 + property test（随机命中/投票组合） |
+| I2 | **全场总额守恒**：`Σ payouts.total + Σ forfeited = assignments.length`。注意分母是**任务数不是人数** —— 有旁观者（未出题者仍可投票和猜）时人数 > 任务数 | 结算后断言 + property test（随机命中/投票组合） |
 | I3 | **分配是 derangement**：无人拿到自己出的题，且一一对应 | `assign.ts` 单测 + 两个 DB 唯一索引 |
 | I4 | **`running` 期间任务正文只对执行者可见** | 全部读查询经过 `visibility.ts`；每条可见性规则一个测试 |
 | I5 | **出题者永远不知道自己的题给了谁**（直到 `settled`） | 同上 |
 | I6 | **`rationale` 永不下发给任何人** | 该字段不出现在任何 API 响应类型里（类型层面杜绝） |
-| I7 | **作者猜中自己出的题**：不触发 busted、不占名次、不计赏金，但扣配额 | `bounty.ts` 单测覆盖这个 case |
+| I7 | **两种作废命中**：①出题人猜中自己出的题 ②**执行者猜自己领的任务**。都不触发 busted、不占名次、不计赏金，但扣配额。②是可套利的：明知完不成（拿 0 份）时猜自己，把自己搞成 busted 再以第一名领 0.5 份 | `bounty.ts` 的 `isVoidedHit()`，单测覆盖两种 case |
 | I8 | **命中名次在事务内确定** | `SELECT ... FOR UPDATE` + 唯一部分索引 |
 | I9 | **状态推进幂等** | 全部走 `UPDATE ... WHERE status=$expected` |
 | I10 | **识破者身份在 `settled` 前不下发** | 猜测响应里只有 `rank` 和自己的赏金，无 guesser 身份；`/reveal` 之前的响应类型不含该字段 |
