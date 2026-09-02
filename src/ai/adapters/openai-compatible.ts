@@ -144,11 +144,25 @@ export class OpenAiCompatibleProvider implements AiProvider {
     content: ContentPart[],
     system: string,
     maxTokens: number,
+    schemaHint?: string,
   ): Promise<string> {
+    /**
+     * 把期望的字段清单附到 system prompt 里。
+     *
+     * 只有 json_schema 档的厂商能靠原生 schema 约束保证字段齐全；
+     * json_mode 只保证返回合法 JSON，**不保证字段对**。实测阿里百炼
+     * 会随机漏掉 fun、reasons、suggestions 这些字段，一个个打补丁
+     * 是打不完的 —— 得让模型先看到完整形状。
+     */
+    const systemWithShape =
+      schemaHint && this.caps.structuredOutput !== "json_schema"
+        ? `${system}\n\n必须严格按这个形状输出，每个字段都不能省略：\n${schemaHint}`
+        : system;
+
     const body: Record<string, unknown> = {
       model: this.opts.model,
       messages: [
-        { role: "system", content: system },
+        { role: "system", content: systemWithShape },
         { role: "user", content },
       ],
       max_tokens: maxTokens,
@@ -214,7 +228,7 @@ export class OpenAiCompatibleProvider implements AiProvider {
       .map((p) => ({ kind: p.kind, ref: p.ref }));
     const plan = planMedia(media, this.caps);
 
-    const first = await this.call(content, req.system, req.maxOutputTokens);
+    const first = await this.call(content, req.system, req.maxOutputTokens, req.schemaHint);
 
     const { data, raw, retries } = await parseAndValidate(
       req.schema,
@@ -223,9 +237,16 @@ export class OpenAiCompatibleProvider implements AiProvider {
       // 重试时把问题回喂给模型，而不是原样再问一遍
       async (problem) =>
         this.call(
-          [...content, { type: "text", text: `上次的输出有问题：${problem}。请只输出合法 JSON。` }],
+          [
+            ...content,
+            {
+              type: "text",
+              text: `上次的输出有问题：${problem}。请重新只输出合法 JSON，每个字段都不能省略。`,
+            },
+          ],
           req.system,
           req.maxOutputTokens,
+          req.schemaHint,
         ),
     );
 

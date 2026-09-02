@@ -10,7 +10,7 @@ export default function JoinPage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
     if (!nickname.trim()) return setError("留个名字，大家好认你。");
-    const response = await fetch(`/api/activities/${encodeURIComponent(code)}/join`, { method: "POST" });
+    const response = await fetch(`/api/join/${encodeURIComponent(code)}`, { method: "POST" });
     if (!response.ok) return setError("邀请码不对，或者这局没了。");
     const data = await response.json() as { activityId: string };
     sessionStorage.setItem(`dare:nickname:${data.activityId}`, nickname.trim());

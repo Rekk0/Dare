@@ -32,7 +32,7 @@ export default function Home() {
     event.preventDefault();
     const normalized = code.trim().toUpperCase();
     if (!normalized) return setError("填邀请码。");
-    window.location.href = `/a/${normalized}/join`;
+    window.location.href = `/join/${normalized}`;
   }
 
   return <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">

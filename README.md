@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dare
 
-## Getting Started
+线下派对暗任务游戏。每人秘密执行一个别人出的任务，AI 做证据鉴定和竞猜裁判，最后全员公投决定谁拿奖励。
 
-First, run the development server:
+## 为什么值得自部署
+
+证据是用户的隐私内容，包括照片、录音和视频。自部署时，数据完全留在部署者自己的机器上，不经过任何第三方。这是相对闭源竞品的真实优势。
+
+## 快速开始
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local   # 填 DASHSCOPE_API_KEY
+pnpm test                     # 199 个测试，无需 docker
 pnpm dev
-# or
-bun dev
+pnpm scheduler                # 另开一个终端
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env.local` 不要提交。开发和 CI 可以保持 `AI_PROFILE=mock`，这样不需要 API key，也不会调用外网。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## AI 厂商
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+默认使用阿里百炼的 Qwen3.5-Omni，一个模型处理文本、图像、音频和视频。运行 `pnpm providers:check` 可以实测当前厂商能力。
 
-## Learn More
+换厂商只需要修改 [providers.yaml](providers.yaml)。`openai-compatible` adapter 覆盖百炼、智谱、硅基流动等一大片兼容平台。
 
-To learn more about Next.js, take a look at the following resources:
+本项目不提供纯本地零成本方案。多模态判定必须外接商用 API，部署者需要自带 key。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 隐私与数据
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+本项目没有 telemetry。
 
-## Deploy on Vercel
+部署者应妥善保管 API key，并了解所选 AI 厂商对请求内容的处理政策。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 文档
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 想了解游戏机制，请看 [project-design.md](project-design.md)。
+- 想了解技术架构，请看 [ARCHITECTURE.md](ARCHITECTURE.md)。
+- 想参与开发，请看 [CONTRIBUTING.md](CONTRIBUTING.md)。
