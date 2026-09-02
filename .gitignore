@@ -43,3 +43,4 @@ next-env.d.ts
 # 字体源文件。体积大，由 scripts/subset_fonts.py 从上游下载后裁剪，
 # 只有裁剪产物 public/fonts/*.woff2 入库。
 /fonts/src/
+/cache/
