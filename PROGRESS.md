@@ -236,13 +236,21 @@ v0.3 改成一票否决后前提消失——他已经归零，没有可保护的
 
 ## 已知的坑
 
-**并发测试在高负载下可能 flaky。** 有一次全量跑时 `guesses` 和 `lifecycle`
-的并发用例挂了，但单独跑 `pnpm test src/db` 是 32 全过，之后连跑两次全量也是
-190 全过。判断是跟 codex 的收尾写入撞车（它刚退出但负载没稳）。
-**没能复现，所以没修，只记录。** 如果以后反复出现，方向是：
-PGlite 是单连接进程内库，`Promise.all` 的多个事务未必真并发，
-可能要换成显式的多连接或改用真 Postgres 跑这几个用例。
-挂的恰恰是「不能重复发钱」的守门测试，它不可靠等于没有，值得盯。
+**「Hook timed out in 10000ms」不是并发逻辑挂了，是 PGlite 起不过来。**
+
+我一度把这个现象误判成「跟 codex 的收尾写入撞车」，错了。真因是
+**PGlite 实例启动在并行测试下的资源竞争**：每个 db 用例的 beforeEach
+都要起一个 WASM Postgres，测试文件并行跑时互相抢资源，撞上 vitest
+默认只有 10 秒的 hookTimeout。挂的偏偏是并发用例，看起来特别像并发 bug。
+
+治法（`vitest.config.mts`）：`hookTimeout: 45_000` + `maxThreads: 4` 限流。
+限流比一味加长超时更治本。
+
+**jsdom 不要全局开。** 全局开的话 core/ 和 ai/ 这些纯函数测试也要付
+DOM 初始化的代价，实测 environment 占 215s。改成默认 node、
+组件测试用 `// @vitest-environment jsdom` docblock 单独声明后，
+environment 降到 38s，总时长 75s -> 60s。
+注意 vitest 4 里 `environmentMatchGlobs` 已经不生效，docblock 是现在的做法。
 
 **移动端长按天生难做。** 系统的文本选择、放大镜、右键菜单、滚动手势都会来抢。
 必须 `contextmenu` preventDefault + `user-select: none` + `-webkit-touch-callout: none` + `touch-action: none`。
