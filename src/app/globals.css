@@ -81,19 +81,11 @@ body {
 }
 
 /* 全文从第一帧就在 DOM 里占好位，只动 opacity，布局永不重排 */
+/* 静息态 = 已涂黑。SSR 出来、JS 还没接管时也必须是盖住的，
+   绝不能出现一瞬间的全文可见。
+   显隐由组件写内联样式接管，见 Redacted.tsx 的 paint()。 */
 .rdt-unit {
   opacity: 0;
-  transition: opacity 420ms linear; /* 渐隐：慢 */
-}
-
-.rdt-unit[data-on="1"] {
-  opacity: 1;
-  transition: opacity 80ms linear; /* 出字：快 */
-}
-
-.rdt[data-mode="hold"] .rdt-unit {
-  opacity: 1;
-  transition: none;
 }
 
 .rdt-bars {
@@ -104,20 +96,21 @@ body {
   gap: 12.5px;
   padding-top: 6px;
   pointer-events: none;
+  /* 必须显式写出起点。只声明终点的话，过渡的起始值是「初始值」而非声明值，
+     属性后来才变化时过渡不会正确跑到终点（插入时就带属性反而正常）。 */
+  opacity: 1;
   transition: opacity 120ms linear;
 }
 
 .rdt-bars i {
   display: block;
+  /* flex: none 是必需的。父容器绝对定位撑满卡片高度，
+     不加的话 flex 项目会被压缩，黑条变成细线而不是实心块。 */
+  flex: none;
   height: 16px;
   border-radius: 2px;
   background: var(--redact);
   box-shadow: inset 0 0 0 1px rgb(255 233 74 / 0.1);
-}
-
-.rdt[data-mode="hold"] .rdt-bars,
-.rdt[data-mode="typing"] .rdt-bars {
-  opacity: 0;
 }
 
 .rdt-progress {
@@ -138,11 +131,6 @@ body {
 /* 逐字的时序是安全机制，不是装饰。所以减弱动效下保留时序，只去掉渐变。
    绝不能因为用户开了减弱动效就把全文一次性显示出来。 */
 @media (prefers-reduced-motion: reduce) {
-  .rdt-unit,
-  .rdt-unit[data-on="1"],
-  .rdt-bars {
-    transition: none;
-  }
   .rdt-progress[data-filling="1"] {
     transition: none;
   }

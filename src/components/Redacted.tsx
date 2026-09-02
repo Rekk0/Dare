@@ -100,9 +100,34 @@ export default function Redacted({
   const typing = useRef(false);
   const held = useRef(false);
 
+  /**
+   * 显隐一律走内联样式，不用 `.rdt[data-mode=x] .rdt-unit` 这类后代属性选择器。
+   *
+   * 任务内容的显隐是这个产品的安全关键路径。内联样式是单一事实来源：
+   * 状态直接写在元素上，不依赖浏览器对属性变化重算后代选择器，
+   * 也不会被后续加入的样式表规则意外覆盖。逐字的快出慢隐、
+   * 长按的瞬间全显、松手的瞬间盖回，三种时长在这里显式区分。
+   */
+  const paint = useCallback((el: HTMLElement | null, on: boolean, instant: boolean) => {
+    if (!el) return;
+    el.style.transition = instant
+      ? "none"
+      : `opacity ${on ? 80 : 420}ms linear`; // 出字快，渐隐慢
+    el.style.opacity = on ? "1" : "0";
+  }, []);
+
   const setMode = useCallback(
     (mode: "idle" | "typing" | "hold") => {
-      rootRef.current?.setAttribute("data-mode", mode);
+      const root = rootRef.current;
+      if (root) {
+        root.setAttribute("data-mode", mode);
+        // 黑条：非 idle 时让开。同样走内联，不靠选择器。
+        const bars = root.querySelector<HTMLElement>(".rdt-bars");
+        if (bars) {
+          bars.style.transition = "opacity 120ms linear";
+          bars.style.opacity = mode === "idle" ? "1" : "0";
+        }
+      }
       onModeChange?.(mode);
     },
     [onModeChange],
@@ -112,24 +137,25 @@ export default function Redacted({
     typeTimers.current.forEach((t) => window.clearTimeout(t));
     typeTimers.current = [];
     typing.current = false;
-    for (const el of unitRefs.current) el?.setAttribute("data-on", "0");
+    // 复位必须是瞬间的，不能让盖回也走 420ms 渐隐
+    for (const el of unitRefs.current) paint(el, false, true);
     setMode("idle");
-  }, [setMode]);
+  }, [setMode, paint]);
 
   const startTyping = useCallback(() => {
     clearTyping();
     typing.current = true;
     setMode("typing");
+    // 逐字的时序是安全机制不是装饰。减弱动效只去掉渐变，时序原样保留 ——
+    // 绝不能因为用户开了减弱动效就把全文一次性显示出来。
+    const instant = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     unitRefs.current.forEach((el, i) => {
       if (!el) return;
       typeTimers.current.push(
-        window.setTimeout(() => el.setAttribute("data-on", "1"), i * stepMs),
+        window.setTimeout(() => paint(el, true, instant), i * stepMs),
       );
       typeTimers.current.push(
-        window.setTimeout(
-          () => el.setAttribute("data-on", "0"),
-          i * stepMs + dwellMs,
-        ),
+        window.setTimeout(() => paint(el, false, instant), i * stepMs + dwellMs),
       );
     });
     typeTimers.current.push(
@@ -149,9 +175,11 @@ export default function Redacted({
         held.current = true;
         clearTyping();
         setMode("hold");
+        // 全显是瞬间的，不做渐入
+        for (const el of unitRefs.current) paint(el, true, true);
       }, HOLD_MS);
     },
-    [clearTyping, setMode],
+    [clearTyping, setMode, paint],
   );
 
   const onUp = useCallback(() => {
@@ -162,7 +190,8 @@ export default function Redacted({
     progressRef.current?.setAttribute("data-filling", "0");
 
     if (wasHold) {
-      setMode("idle");
+      // 松手瞬间盖回，不走渐隐
+      clearTyping();
       return;
     }
     // 短按：播放中则急停，否则开始逐字
@@ -192,10 +221,13 @@ export default function Redacted({
   }, [text, onCancel]);
 
   return (
+    // data-mode / data-on / data-filling 全部只用 setAttribute 命令式设置，
+    // 绝不写成 JSX 属性。写成 JSX 属性的话，onModeChange 触发父组件重渲染时，
+    // React 会把 JSX 里的值刷回 DOM，把命令式设的状态整个冲掉。
+    // CSS 的默认态（无属性 = 已涂黑）本来就是正确的初始值，不需要渲染初始属性。
     <div
       ref={rootRef}
       className={`rdt ${className ?? ""}`}
-      data-mode="idle"
       tabIndex={0}
       role="button"
       aria-label="点击逐字显示任务，长按显示全文"
@@ -227,7 +259,6 @@ export default function Redacted({
               unitRefs.current[i] = el;
             }}
             className="rdt-unit"
-            data-on="0"
           >
             {u}
           </span>
@@ -240,7 +271,7 @@ export default function Redacted({
         ))}
       </div>
 
-      <div ref={progressRef} className="rdt-progress" data-filling="0" aria-hidden="true" />
+      <div ref={progressRef} className="rdt-progress" aria-hidden="true" />
     </div>
   );
 }
