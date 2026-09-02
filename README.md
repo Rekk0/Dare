@@ -6,6 +6,29 @@
 
 证据是用户的隐私内容，包括照片、录音和视频。自部署时，数据完全留在部署者自己的机器上，不经过任何第三方。这是相对闭源竞品的真实优势。
 
+## 数据库：要真开一局必须给 DATABASE_URL
+
+留空 `DATABASE_URL` 时用 PGlite（Postgres 编译成 WASM，落盘到 `.storage/pgdata`）。
+**PGlite 是进程内单连接的，两个进程不能共享同一个库。**
+
+而这个应用需要两个进程：`pnpm dev` 跑 web，`pnpm scheduler` 跑状态推进
+（自动分配任务、开投票、结算）。实测下来 scheduler 会扫到 0 个活动，
+因为它看的是自己那个空库。
+
+所以：
+
+- **跑测试、单进程开发** -> 不用配，PGlite 够用
+- **真的开一局** -> 必须给 `DATABASE_URL` 指向真 Postgres
+
+```bash
+# .env.local
+DATABASE_URL=postgres://user:pass@host:5432/dare
+```
+
+Supabase、Neon 的免费档，或者本地装一个 Postgres 都行。
+schema 本来就是 Postgres 方言，不需要改任何代码。
+
+
 ## 快速开始
 
 ```bash

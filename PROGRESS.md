@@ -302,6 +302,17 @@ python scripts/subset_fonts.py   # 字体子集化（需先下载源字体到 fo
 
 ## 当前阻塞
 
+**要真开一局必须给 `DATABASE_URL`。** 已实证：web 和 scheduler 是两个进程，
+PGlite 进程内单连接不能共享，scheduler 会扫到 0 个活动。
+Supabase / Neon 免费档或本地 Postgres 都行，schema 本来就是 Postgres 方言。
+
+**iOS Safari 尚未验证 Spike C。** Android Chrome 已通过。
+
+**音频/视频尚未实测。** 需要公网可访问的样本 URL，
+`PROBE_AUDIO_URL=... PROBE_VIDEO_URL=... pnpm providers:check dashscope`。
+
+## 历史阻塞（已解决）
+
 **① Spike A 缺 API key。** 需要一个 Gemini（或其他多模态厂商）的 key 才能实测能力矩阵。
 这个结论决定 Phase 1 要不要写 ffmpeg 抽帧 + ASR 降级管线，是最该早知道的一件事。
 
