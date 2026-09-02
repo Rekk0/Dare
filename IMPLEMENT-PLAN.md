@@ -105,16 +105,50 @@ voided（作者猜中自己出的题）→ 不触发 busted、不占名次、不
 
 第一个能真的玩起来的版本。视觉规范见 [DESIGN.md](DESIGN.md)。
 
-**交付物**
+### 前置决定（Spike A 之后确定的）
 
-- 任务卡屏（M0 Spike C 的组件接进来）
-- 上传屏：进页面即取景器，预签名直传，**传完不给缩略图**，只一个小对勾 1.2s 后退回
-- `ai.evidenceReview` 队列任务
+**不写 ffmpeg + ASR 降级管线。** 百炼原生吃音视频，实测通过。
+降级管线降格成「支持更多厂商」，推到 Phase 2。这省掉了整个项目原本最重的一块。
+
+**对象存储用 S3 兼容接口，本地起 MinIO 还是接 R2 到时候再定。**
+关键约束不是选哪家，是**预签名直传**：大视频不能过 app server。
+
+### M4a 上传管线
+
+- `POST /api/assignments/:id/evidence/sign` 签发预签名 PUT URL
+  - 必须校验：请求者就是该 assignment 的执行者（走 `core/visibility.ts`）
+  - 必须限制：mime 白名单、大小上限、有效期 5 分钟
+  - storage key 用随机串，**不可枚举**（project-design.md §3.2）
+- 客户端直传 S3，不经过 app server
+- `POST /api/assignments/:id/evidence` 确认上传，入库，入队评审
 
 **成功标准**
+- [ ] 非执行者调 sign 接口返回 403，不是空对象
+- [ ] 超过大小上限或 mime 不在白名单的请求被拒
+- [ ] 预签名 URL 过期后不可用
+- [ ] storage key 随机且不含 assignment id 等可推测信息
 
+### M4b 证据评审
+
+`src/ai/tasks/evidenceReview.ts`，输出 schema 见 project-design.md §5.4。
+
+- 媒体要有**可访问 URL** 才能喂给百炼。用预签名 GET URL，有效期覆盖评审时长
+- 一个 assignment 可能有多个证据，Qwen3.5-Omni 支持单次多模态混传，**一次调用评完**
+- 报告写 `ai_reports`，带上 provider / model / mediaPlan，跨厂商时分数不可比必须留痕
+
+**成功标准**
+- [ ] 图 / 音 / 视频三种证据都能评审出结构化报告（`AI_PROFILE=live` 手动验一次）
+- [ ] mock 档下全部逻辑可测，不烧钱
+- [ ] 评审失败不阻断流程：报告标记为不可用，公投照常进行
+
+### M4c 任务卡屏
+
+把 Spike C 的 `Redacted.tsx` 接进真实数据。
+
+**成功标准**
 - [ ] **任务正文整块涂黑，一个字不露**。绝无部分涂黑、绝无 blur 代替、绝无点击切换
-- [ ] 图 / 音 / 视频三种证据都能评审出结构化报告
+- [ ] 参数用调定的 step 150 / dwell 800
+- [ ] `locked` 之前打开任务卡拿到的是 null，不是空串（走 visibility）
 - [ ] 真机 6 人走一遍：出题 → 分配 → 各自上传 → 都拿到报告
 
 ---
