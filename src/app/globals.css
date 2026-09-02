@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+/* 得意黑子集，只含 display 文案用字。清单见 fonts/display-charset.txt，
+   用 scripts/subset_fonts.py 生成。新增 display 文案要同步更新清单，否则掉字。 */
+@font-face {
+  font-family: "Smiley Sans Subset";
+  src: url("/fonts/smiley-sans-subset.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* Dare 设计令牌。权威定义见 DESIGN.md §1。
+   单一暗色世界，不做浅色模式：产品在 KTV 和酒吧使用，
+   屏幕亮度是防肩窥的安全问题，不是主题偏好。 */
+:root {
+  --ground: #0e1220;
+  --surface: #161b2e;
+  --raised: #1f263c;
+  --line: #2e3654;
+  --dim: #6c7699;
+  --body: #aab3d0;
+  --bright: #eef1fa;
+
+  /* 涂黑条。比页面底更深，才盖得住 */
+  --redact: #05070e;
+
+  /* 全局唯一强调色。黄底一律配 --ground 深色字，绝不配白字 */
+  --mark: #ffe94a;
+  --mark-deep: #d9c321;
+
+  /* 语义色。红只用于被识破和危险确认，绿只用于结算进账 */
+  --alarm: #ff3b30;
+  --gain: #4ade80;
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-dim: var(--dim);
+  --color-body: var(--body);
+  --color-bright: var(--bright);
+  --color-redact: var(--redact);
+  --color-mark: var(--mark);
+  --color-alarm: var(--alarm);
+  --color-gain: var(--gain);
+  --font-display: "Smiley Sans Subset", system-ui, sans-serif;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--ground);
+  color: var(--body);
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Redacted 组件 ----------
+   规格见 DESIGN.md §6.1。两种手势：
+     按住 800ms  全文显示，松手瞬间盖回
+     点一下      逐字显示、逐字渐隐（可见窗口 = dwell/step）
+     播放中再点  立刻全清（急停）                                  */
+
+.rdt {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+
+.rdt:focus-visible {
+  outline: 2px solid var(--mark);
+  outline-offset: 6px;
+  border-radius: 6px;
+}
+
+/* 全文从第一帧就在 DOM 里占好位，只动 opacity，布局永不重排 */
+.rdt-unit {
+  opacity: 0;
+  transition: opacity 420ms linear; /* 渐隐：慢 */
+}
+
+.rdt-unit[data-on="1"] {
+  opacity: 1;
+  transition: opacity 80ms linear; /* 出字：快 */
+}
+
+.rdt[data-mode="hold"] .rdt-unit {
+  opacity: 1;
+  transition: none;
+}
+
+.rdt-bars {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12.5px;
+  padding-top: 6px;
+  pointer-events: none;
+  transition: opacity 120ms linear;
+}
+
+.rdt-bars i {
+  display: block;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--redact);
+  box-shadow: inset 0 0 0 1px rgb(255 233 74 / 0.1);
+}
+
+.rdt[data-mode="hold"] .rdt-bars,
+.rdt[data-mode="typing"] .rdt-bars {
+  opacity: 0;
+}
+
+.rdt-progress {
+  position: absolute;
+  left: 0;
+  bottom: -12px;
+  height: 2px;
+  width: 0%;
+  border-radius: 2px;
+  background: var(--mark);
+}
+
+.rdt-progress[data-filling="1"] {
+  width: 100%;
+  transition: width 800ms linear;
+}
+
+/* 逐字的时序是安全机制，不是装饰。所以减弱动效下保留时序，只去掉渐变。
+   绝不能因为用户开了减弱动效就把全文一次性显示出来。 */
+@media (prefers-reduced-motion: reduce) {
+  .rdt-unit,
+  .rdt-unit[data-on="1"],
+  .rdt-bars {
+    transition: none;
+  }
+  .rdt-progress[data-filling="1"] {
+    transition: none;
+  }
+}
