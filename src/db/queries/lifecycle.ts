@@ -2,8 +2,9 @@ import { and, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { assign } from "@/core/assign";
 import {
-  assertEnoughPlayers,
+  assertPlayerCount,
   buildRoster,
+  guessQuotaFor,
   nextTransition,
   type ActivitySchedule,
   type Transition,
@@ -146,8 +147,16 @@ export async function performAssignment(db: Db, activityId: string): Promise<boo
     const roster = buildRoster(
       rows.map((r) => ({ pid: r.pid, hasAcceptedTask: r.taskId !== null })),
     );
-    // 人不够就抛，事务回滚，活动停在 locked 可以重试或由创建者处理
-    assertEnoughPlayers(roster);
+    // 人数不合规就抛，事务回滚，活动停在 locked 可以重试或由创建者处理
+    assertPlayerCount(roster);
+
+    // 配额按实际参与分配的人数定，在这里写死进活动。
+    // 固定 3 次在人多时会让猜测变成摆设：20 个目标里猜 3 次几乎不可能命中，
+    // 而被识破是这个游戏最好的情绪节点。
+    await tx
+      .update(activities)
+      .set({ guessQuota: guessQuotaFor(roster.players.length) })
+      .where(eq(activities.id, activityId));
 
     const taskOf = new Map(rows.filter((r) => r.taskId).map((r) => [r.pid, r.taskId as string]));
     const perm = assign(roster.players.length);

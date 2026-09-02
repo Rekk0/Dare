@@ -107,6 +107,28 @@ export interface AssignRoster {
 export const MIN_PLAYERS = 3;
 
 /**
+ * 支持的人数上限。
+ *
+ * 超过这个数投票会退化：每人要对除自己外的每个任务投票，
+ * 21 人就是每人 20 次，再多就没人投得完，法定人数凑不齐，
+ * 公投会全部走 AI 兜底，形同虚设。
+ */
+export const MAX_PLAYERS = 21;
+
+/**
+ * 猜测配额随人数走。
+ *
+ * 固定 3 次在人多时会让猜测机制变成摆设：20 个目标里猜 3 次，
+ * 命中概率极低，几乎没人会被识破，而被识破是这个游戏最好的情绪节点。
+ *
+ * 规则：不足 9 人给 3 次；9 人及以上按人数除以 3 向下取整。
+ * 9 人时正好也是 3 次，所以曲线是连续的，不会在 9 人处突然跳变。
+ */
+export function guessQuotaFor(playerCount: number): number {
+  return playerCount < 9 ? 3 : Math.floor(playerCount / 3);
+}
+
+/**
  * 筛出真正参与分配的人。
  *
  * 到 start_at 还没出题的人移出本次分配（标记为旁观者），不阻塞全场 ：
@@ -132,8 +154,21 @@ export class NotEnoughPlayersError extends Error {
   }
 }
 
-export function assertEnoughPlayers(roster: AssignRoster): void {
+export class TooManyPlayersError extends Error {
+  constructor(readonly count: number) {
+    super(`参与分配的人超过 ${MAX_PLAYERS} 人（当前 ${count} 人），投票会凑不齐法定人数`);
+    this.name = "TooManyPlayersError";
+  }
+}
+
+export function assertPlayerCount(roster: AssignRoster): void {
   if (roster.players.length < MIN_PLAYERS) {
     throw new NotEnoughPlayersError(roster.players.length);
   }
+  if (roster.players.length > MAX_PLAYERS) {
+    throw new TooManyPlayersError(roster.players.length);
+  }
 }
+
+/** @deprecated 用 assertPlayerCount，它同时检查上下限 */
+export const assertEnoughPlayers = assertPlayerCount;

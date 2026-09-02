@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  assertEnoughPlayers,
+  MAX_PLAYERS,
+  TooManyPlayersError,
+  assertPlayerCount,
   buildRoster,
+  guessQuotaFor,
   MIN_PLAYERS,
   NotEnoughPlayersError,
   nextTransition,
@@ -144,14 +147,52 @@ describe("分配名单", () => {
       { pid: "b", hasAcceptedTask: true },
       { pid: "c", hasAcceptedTask: false },
     ]);
-    expect(() => assertEnoughPlayers(roster)).toThrow(NotEnoughPlayersError);
-    expect(() => assertEnoughPlayers(roster)).toThrow(String(MIN_PLAYERS));
+    expect(() => assertPlayerCount(roster)).toThrow(NotEnoughPlayersError);
+    expect(() => assertPlayerCount(roster)).toThrow(String(MIN_PLAYERS));
   });
 
   it("刚好 3 人可以开场", () => {
     const roster = buildRoster(
       ["a", "b", "c"].map((pid) => ({ pid, hasAcceptedTask: true })),
     );
-    expect(() => assertEnoughPlayers(roster)).not.toThrow();
+    expect(() => assertPlayerCount(roster)).not.toThrow();
+  });
+});
+
+describe("猜测配额随人数走", () => {
+  it("不足 9 人固定 3 次", () => {
+    for (const n of [3, 4, 6, 8]) {
+      expect(guessQuotaFor(n)).toBe(3);
+    }
+  });
+
+  it("9 人及以上按人数除以 3 向下取整", () => {
+    expect(guessQuotaFor(9)).toBe(3);
+    expect(guessQuotaFor(12)).toBe(4);
+    expect(guessQuotaFor(20)).toBe(6);
+    expect(guessQuotaFor(21)).toBe(7);
+  });
+
+  it("在 9 人处曲线连续，不会突然跳变", () => {
+    // 8 人给 3 次、9 人也给 3 次，跨过阈值时手感不会突变
+    expect(guessQuotaFor(8)).toBe(guessQuotaFor(9));
+  });
+});
+
+describe("人数上限", () => {
+  const roster = (n: number) =>
+    buildRoster(Array.from({ length: n }, (_, i) => ({ pid: `p${i}`, hasAcceptedTask: true })));
+
+  it("21 人可以开场", () => {
+    expect(() => assertPlayerCount(roster(MAX_PLAYERS))).not.toThrow();
+  });
+
+  it("超过 21 人拒绝开场", () => {
+    // 再多投票就凑不齐法定人数，公投会全部走 AI 兜底，形同虚设
+    expect(() => assertPlayerCount(roster(MAX_PLAYERS + 1))).toThrow(TooManyPlayersError);
+  });
+
+  it("不足 3 人仍然拒绝", () => {
+    expect(() => assertPlayerCount(roster(2))).toThrow(NotEnoughPlayersError);
   });
 });

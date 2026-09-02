@@ -1,7 +1,31 @@
 # 部署到 dare.example.com
 
-> 目标服务器：Ubuntu，国内，域名已备案（所以 80/443 可用）。
-> 待确认：具体 Ubuntu 版本、哪些端口被占、有没有 nginx/caddy/docker。
+> 目标服务器实测（2026-09-03）：
+> Ubuntu 24.04.4 LTS，nginx 1.24 已占 80/443，Postgres 已在 127.0.0.1:5432 运行，
+> **没有 docker**，3002 端口已有另一个 Next 应用，
+> **内存只有 1.6G，可用约 938M**，磁盘 26G 可用。
+
+## 先解决内存
+
+`next build` 在不到 1G 可用内存下**很可能 OOM**，而这台机器上已经跑着
+另一个 Next 应用。两个办法，选一个：
+
+**A. 加 swap（推荐，一次性）**
+
+```bash
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+free -h   # 确认 Swap 那行有 2G
+```
+
+**B. 本地构建，只传产物**
+
+在你的开发机上 `pnpm build`，然后把 `.next/`、`public/`、`package.json`、
+`pnpm-lock.yaml` 传上去，服务器只跑 `pnpm install --prod` 和 `pnpm start`。
+省内存但每次更新都要手动传。
+
+**建议 A。** 2G swap 对 40G 盘不算负担，之后构建、跑测试都不用再操心。
 
 ## 架构
 
@@ -16,9 +40,9 @@ dare.example.com:443
 **Postgres 只绑 `127.0.0.1`。** 应用和数据库同机走 localhost，延迟接近零，
 也不用为数据库配任何防火墙规则。服务器上跑着别的项目也互不干扰。
 
-## 一、Postgres
+## 一、Postgres（已装好，只需建库）
 
-服务器上如果已经有 Postgres，建一个独立的库和用户就行，不用再装一个：
+实测已在 `127.0.0.1:5432` 运行且只绑本地，直接建库建用户：
 
 ```bash
 sudo -u postgres psql <<'SQL'
@@ -27,17 +51,7 @@ CREATE DATABASE dare OWNER dare;
 SQL
 ```
 
-没有的话装一个：
-
-```bash
-sudo apt update && sudo apt install -y postgresql
-```
-
-确认它只监听本地（默认就是）：
-
-```bash
-sudo ss -tlnp | grep 5432   # 应当是 127.0.0.1:5432，不是 0.0.0.0:5432
-```
+已确认只监听 `127.0.0.1:5432`，不用改配置。
 
 建表：项目用 Drizzle，schema 是 Postgres 方言，第一次启动时
 `src/lib/db.ts` 会检查 `activities` 表是否存在并自动建表。
@@ -80,9 +94,9 @@ pnpm scheduler              # 状态推进 + 数据清理
 
 ## 三、反代
 
-### 如果服务器上已经有 nginx
+### 你的情况：nginx 1.24 已在 80/443，sites-enabled 里只有 default
 
-**不要再起一个反代**，加一个 vhost 就行：
+**不要再起反代**，加一个 vhost：
 
 ```nginx
 # /etc/nginx/sites-available/dare
@@ -121,22 +135,9 @@ sudo nginx -t && sudo systemctl reload nginx
 **`client_max_body_size` 那行别漏。** nginx 默认 1MB，视频证据直接 413，
 而且报错发生在 nginx 层，应用日志里什么都看不到。
 
-### 如果服务器上是 caddy
+### caddy 分支不适用
 
-```caddyfile
-dare.example.com {
-    reverse_proxy 127.0.0.1:3100
-    request_body {
-        max_size 210MB
-    }
-}
-```
-
-Caddy 自动申请证书，不需要 certbot。
-
-### 如果 80/443 都被占且不方便共用
-
-那就得换非标端口，但用户要手输 `:8443`，体验很差。优先考虑共用现有反代。
+这台机器上是 nginx，跳过。
 
 ## 四、systemd
 
@@ -148,7 +149,7 @@ After=network.target postgresql.service
 
 [Service]
 WorkingDirectory=/opt/dare
-Environment=PORT=3100
+Environment=PORT=3100   # 3002 已被另一个 Next 应用占用
 ExecStart=/usr/bin/pnpm start
 Restart=always
 User=dare
@@ -198,7 +199,8 @@ ls -ld /opt/dare/.storage           # 应当只有 dare 用户可读写
 
 ## 待办
 
-- [ ] 确认 Ubuntu 版本和已占端口
-- [ ] 确认现有反代是 nginx 还是 caddy
-- [ ] 生成 STORAGE_SIGNING_SECRET
-- [ ] 部署后手机验一遍全流程
+- [x] Ubuntu 24.04.4，nginx 1.24 占 80/443，Postgres 已就绪，无 docker
+- [ ] **先加 2G swap**，否则 next build 大概率 OOM
+- [ ] 生成 STORAGE_SIGNING_SECRET（`openssl rand -hex 32`）
+- [ ] 在 DNS 加 `dare.example.com` 的 A 记录指向本机
+- [ ] 部署后手机验一遍全流程，重点是上传页能不能唤起相机
