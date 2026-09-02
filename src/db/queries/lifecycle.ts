@@ -11,6 +11,7 @@ import {
 import type { ActivityStatus } from "@/core/visibility";
 import type { Db } from "../client";
 import { activities, assignments, participants, tasks } from "../schema";
+import { settleActivity } from "./settlement";
 
 /**
  * 活动生命周期的写库操作。
@@ -91,6 +92,13 @@ export async function advanceActivity(
     return ok
       ? { advanced: true, from: t.from, to: t.to }
       : { advanced: false, reason: "已被其他实例分配" };
+  }
+
+  if (t.action === "settle") {
+    const result = await settleActivity(db, activityId);
+    return result.settled
+      ? { advanced: true, from: t.from, to: t.to }
+      : { advanced: false, reason: result.reason };
   }
 
   const ok = await casStatus(db, activityId, t.from, t.to);

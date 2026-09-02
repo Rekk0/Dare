@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "scheduler": "tsx scripts/scheduler.ts",
     "providers:check": "tsx scripts/providers-check.ts",
     "fonts:subset": "python scripts/subset_fonts.py"
   },
