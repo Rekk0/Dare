@@ -49,6 +49,19 @@ export interface OpenAiCompatibleOptions {
   fetchImpl?: typeof fetch;
   /** 媒体的可访问 URL。M4 接对象存储后由预签名 URL 提供 */
   resolveMediaUrl?: (ref: MediaRef) => Promise<string>;
+  /**
+   * 单次请求超时。多模态请求本来就慢，默认给足。
+   * 必须显式设：不设的话慢连接会静默拖死，而 fetch 只抛一个
+   * 没有信息量的 `fetch failed`，底层原因被吞掉。
+   */
+  timeoutMs?: number;
+  /**
+   * 建连失败时重试几次。
+   * 厂商域名的 A 记录里可能混着不可达的地址（实测阿里百炼的 workspace
+   * 端点两个 A 记录里有一个是死的），配合 net.ts 里随机化的 DNS 顺序，
+   * 重试就能换一个地址。只对建连类错误重试，HTTP 错误不重试。
+   */
+  connectRetries?: number;
 }
 
 type ContentPart = Record<string, unknown>;
@@ -149,14 +162,40 @@ export class OpenAiCompatibleProvider implements AiProvider {
       body.stream_options = { include_usage: true };
     }
 
-    const res = await this.doFetch(`${this.opts.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.opts.apiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
+    const attempts = (this.opts.connectRetries ?? 3) + 1;
+    let res: Response | null = null;
+    let lastErr = "";
+
+    for (let i = 0; i < attempts; i++) {
+      try {
+        res = await this.doFetch(`${this.opts.baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.opts.apiKey}`,
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(this.opts.timeoutMs ?? 120_000),
+        });
+        break;
+      } catch (err) {
+        // fetch 的网络错误把底层原因藏在 cause 里，不挖出来就只有
+        // 一句没用的 `fetch failed`
+        const e = err as Error & { cause?: unknown };
+        const cause = e.cause instanceof Error ? e.cause.message : e.message;
+        lastErr = cause;
+        // 只对建连类错误重试。HTTP 层的错误重试没有意义
+        const retryable = /timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EHOSTUNREACH|ENETUNREACH|socket hang up/i.test(
+          cause,
+        );
+        if (!retryable || i === attempts - 1) {
+          throw new Error(
+            `${this.opts.id} 请求失败 (${this.opts.baseUrl}) 第 ${i + 1}/${attempts} 次: ${cause}`,
+          );
+        }
+      }
+    }
+    if (!res) throw new Error(`${this.opts.id} 请求失败: ${lastErr}`);
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -202,6 +241,14 @@ export class OpenAiCompatibleProvider implements AiProvider {
   }
 }
 
+/** 厂商在 SSE 流里回的 API 错误。跟半个 JSON 的解析失败区分开 */
+class StreamApiError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StreamApiError";
+  }
+}
+
 async function readJson(res: Response): Promise<string> {
   const json = (await res.json()) as {
     choices?: { message?: { content?: string } }[];
@@ -234,9 +281,19 @@ async function readStream(res: Response): Promise<string> {
       try {
         const j = JSON.parse(payload) as {
           choices?: { delta?: { content?: string } }[];
+          error?: { message?: string; code?: string };
         };
+        // 厂商会把 API 错误也塞进 SSE 流里（HTTP 状态仍是 200）。
+        // 不在这里抛出来的话，错误会被静默丢弃，最后表现成
+        // 「找不到合法 JSON」这种毫无信息量的解析失败。
+        if (j.error) {
+          throw new StreamApiError(
+            j.error.message ?? j.error.code ?? "厂商在流中返回了未知错误",
+          );
+        }
         out += j.choices?.[0]?.delta?.content ?? "";
-      } catch {
+      } catch (e) {
+        if (e instanceof StreamApiError) throw e;
         // 半个 JSON，忽略。完整的那份会在后续 chunk 里补齐
       }
     }

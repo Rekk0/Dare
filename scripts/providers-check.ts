@@ -15,12 +15,15 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
+import { configureNetwork } from "../src/ai/net";
 import { buildProvider, loadProvidersFile } from "../src/ai/registry";
 import type { AiProvider, MediaKind, Part } from "../src/ai/types";
 
-// 1x1 像素的 PNG。测的是「这家吃不吃图片这种 content part」，不是识图质量
+// 16x16 的纯色 PNG。测的是「这家吃不吃图片这种 content part」，不是识图质量。
+// 注意不能用 1x1：实测阿里百炼要求边长大于 10px，
+// 否则报 InternalError.Algo.InvalidParameter，看起来像不支持图片，其实是样本无效。
 const TINY_PNG =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR4nGP4/9KLJMQwqmFUw/DVAAB6gzIfkwm6EQAAAABJRU5ErkJggg==";
 
 const ANSWER = z.object({ ok: z.literal(true) });
 
@@ -154,6 +157,7 @@ async function checkProvider(id: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  configureNetwork();
   loadEnvLocal();
   const only = process.argv[2];
   const file = loadProvidersFile();

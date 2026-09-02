@@ -11,7 +11,7 @@ providers:
   # 一次传 3 张图加一段录音，所以必须锁 3.5。
   dashscope:
     adapter: openai-compatible
-    model: qwen3.5-omni
+    model: qwen3.5-omni-plus
     apiKeyEnv: DASHSCOPE_API_KEY
     baseUrlEnv: DASHSCOPE_BASE_URL
     # 一律用流式。omni 系模型有的强制要求流式，而流式在不要求时也一样能用，
@@ -29,6 +29,28 @@ providers:
         maxVideoSeconds: 3600        # 1 小时
         maxVideoBytes: 2147483648    # 2 GB
         maxInlineBytes: 10485760     # 超过就得走 URL 而不是 base64
+      structuredOutput: json_mode
+      fileUpload: false
+
+  # 同一个端点的便宜档。纯文本场景走这个
+  dashscope-flash:
+    adapter: openai-compatible
+    model: qwen3.5-omni-flash
+    apiKeyEnv: DASHSCOPE_API_KEY
+    baseUrlEnv: DASHSCOPE_BASE_URL
+    stream: true
+    caps:
+      media:
+        image: native
+        audio: native
+        video: native
+      limits:
+        maxImages: 128
+        maxImageBytes: 10485760
+        maxAudioSeconds: 3600
+        maxVideoSeconds: 150
+        maxVideoBytes: 268435456
+        maxInlineBytes: 10485760
       structuredOutput: json_mode
       fileUpload: false
 
@@ -62,9 +84,11 @@ providers:
 
 # 按场景路由。预审和猜测是纯文本，用不着多模态；证据评审才需要。
 routes:
-  taskReview: dashscope
+  # 预审和猜测是纯文本，用 flash 那一档就够，没必要为纯文本付 plus 的价
+  taskReview: dashscope-flash
+  guessJudge: dashscope-flash
+  # 证据评审是质量关键路径，判错了直接影响谁拿钱，用 plus
   evidenceReview: dashscope
-  guessJudge: dashscope
 
 # 主 provider 失败时依次降级
 fallback:

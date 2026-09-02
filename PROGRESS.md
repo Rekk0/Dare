@@ -32,10 +32,10 @@
 
 | # | 里程碑 | 状态 | 备注 |
 |---|---|---|---|
-| M0 | 地基与技术验证 | 🟡 | Spike B ✅；**Spike C ✅ 真机通过并调定参数**；Spike A 缺 key 阻塞 |
+| M0 | 地基与技术验证 | ✅ 完成 | Spike A/B/C 全部通过 |
 | M1 | 结算引擎（纯函数） | ✅ 完成 | 19 个测试全绿，含 10000 组 property test |
 | M2 | 可见性 + 数据层 + 生命周期 | ✅ 完成 | 可见性矩阵每格有测试；DB 约束 + 并发幂等已验 |
-| M3 | AI 层 + 任务预审 | 🟡 抽象层完成 | types/validate/planner/MockProvider 就位；缺 google-genai adapter 与预审 |
+| M3 | AI 层 + 任务预审 | 🟡 | 抽象层 + openai-compatible adapter + 实测脚本就位；**缺任务预审** |
 | M4 | 任务卡 + 上传 + 证据评审 | ⬜ 未开始 | 第一个能玩的版本 |
 | M5 | 猜测 + 被识破 | ⬜ 未开始 | |
 | M6 | 公投 + 揭晓 + 结算 | ⬜ 未开始 | 完成即 Phase 1 完成 |
@@ -74,6 +74,25 @@
 按时间倒序。**只记结论和「为什么」，不记过程。**
 
 ### 2026-09-02（实现期）
+
+**接国内厂商 API 时，网络问题会伪装成代码问题。**
+接百炼时 fetch 一直报 `fetch failed`，查了四轮才定位：
+① DNS 同时返回 AAAA 和 A，**IPv6 完全不通**，Node 默认先试 IPv6；
+② A 记录里**有一个 IP 是死的**（101.201.58.201 通 290ms，47.94.20.201 超时 21s）。
+**加长连接超时是错的解法**，只会让它在死 IP 上等更久。正解是：
+超时改短（6s）+ 随机化 DNS 顺序 + 建连失败重试。见 `src/ai/net.ts`。
+
+**`fetch failed` 必须挖 `cause`。** Node 的 fetch 把底层原因藏在 `err.cause` 里，
+不挖出来就只有一句没有信息量的 `fetch failed`，根本没法查。
+
+**厂商会把 API 错误塞进 SSE 流里，HTTP 状态仍是 200。**
+第一版 `readStream` 只认 `delta.content`，把 `data: {"error":...}` 静默丢弃了，
+最后表现成「找不到合法 JSON」这种毫无信息量的解析失败。
+**流式响应必须显式检查 error 字段。**
+
+**探针样本也会说谎。** 图片探针一开始用 1x1 的 PNG，百炼报
+`height:1 or width:1 must be larger than 10`，看起来像「不支持图片」，
+其实是样本无效。换成 16x16 就通了。
 
 **真机测试必须用生产构建，dev 构建过不了手机热点。**
 Spike C 在手机上「点和按完全没反应」查了很久：内联 JS 能跑、Intl.Segmenter 有、
@@ -217,7 +236,10 @@ python scripts/subset_fonts.py   # 字体子集化（需先下载源字体到 fo
 **① Spike A 缺 API key。** 需要一个 Gemini（或其他多模态厂商）的 key 才能实测能力矩阵。
 这个结论决定 Phase 1 要不要写 ffmpeg 抽帧 + ASR 降级管线，是最该早知道的一件事。
 
-**② iOS Safari 尚未验证 Spike C。** Android Chrome 已通过。
+**① iOS Safari 尚未验证 Spike C。** Android Chrome 已通过。
+
+**② 音频/视频尚未实测。** 需要公网可访问的样本 URL，M4 接对象存储后跑
+`PROBE_AUDIO_URL=... PROBE_VIDEO_URL=... pnpm providers:check dashscope`。
 
 **已知的量具问题**：本机内置浏览器的 `getComputedStyle` 返回陈旧值，
 读不出内联样式的变化。验证 Redacted 的状态要读 `element.style`，不要读计算样式。
