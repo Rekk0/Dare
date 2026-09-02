@@ -3,14 +3,14 @@
 > **跨会话交接文件。** 新会话从这里读起，就知道现在在哪、下一步做什么、哪些坑已经踩过。
 > 每完成一个里程碑或做出一个决策，就更新这里。
 
-**最后更新**：2026-09-02（M0 完成、M1 完成）
+**最后更新**：2026-09-02（M0/M1/M2 完成，M3 部分完成，107 个测试全绿）
 
 ---
 
 ## 现在在哪
 
-**阶段**：M0 与 M1 已完成并验证
-**下一步**：M2 · 可见性 + 数据层 + 活动生命周期
+**阶段**：M0 / M1 / M2 完成并验证，M3 的 AI 抽象层已就位
+**下一步**：M3 剩余部分（google-genai adapter + 任务预审），然后 M4
 **待你做的事**：① 手机上真机验证 Spike C 手势并定可见窗口数值；② 提供一个 Gemini API key 才能跑 Spike A
 **代码生成方式**：codex 子代理，由 Claude 拆任务、发指令、收结果、审代码
 
@@ -34,8 +34,8 @@
 |---|---|---|---|
 | M0 | 地基与技术验证 | 🟡 大部分完成 | Spike B 通过；Spike C 代码通过、待真机；Spike A 缺 key 阻塞 |
 | M1 | 结算引擎（纯函数） | ✅ 完成 | 19 个测试全绿，含 10000 组 property test |
-| M2 | 可见性 + 数据层 + 生命周期 | ⬜ 未开始 | |
-| M3 | AI 层 + 任务预审 | ⬜ 未开始 | |
+| M2 | 可见性 + 数据层 + 生命周期 | ✅ 完成 | 可见性矩阵每格有测试；DB 约束 + 并发幂等已验 |
+| M3 | AI 层 + 任务预审 | 🟡 抽象层完成 | types/validate/planner/MockProvider 就位；缺 google-genai adapter 与预审 |
 | M4 | 任务卡 + 上传 + 证据评审 | ⬜ 未开始 | 第一个能玩的版本 |
 | M5 | 猜测 + 被识破 | ⬜ 未开始 | |
 | M6 | 公投 + 揭晓 + 结算 | ⬜ 未开始 | 完成即 Phase 1 完成 |
@@ -61,11 +61,36 @@
 
 **M1 结算引擎 — 通过。** 19 个测试，含 10000 组 property test 断言 I1 与 I2。
 
+**M2 — 通过。** 可见性矩阵每一格都有测试；schema 把 I1/I3/I8 写进 DB 约束；
+并发幂等已用 PGlite 真跑验证（5 个实例同时分配只写一套）。
+
+**M3 抽象层 — 通过。** AiProvider 契约、三档结构化输出降级、MediaPlanner、MockProvider。
+`AI_PROFILE=mock` 下全部 AI 逻辑可跑，不烧钱不需要 key。
+
+**当前测试总数：107，全绿。** `pnpm test` 一条命令跑完，无需 docker。
+
 ## 决策日志
 
 按时间倒序。**只记结论和「为什么」，不记过程。**
 
 ### 2026-09-02（实现期）
+
+**codex 子代理会「只输出计划就结束」。**
+M2 派出去后 35 秒就 task_complete，最后一句是「方案已核对，准备按以下边界实现」，
+**一个文件都没写**。而且 codex-rescue 子代理只能转发单次调用，事后查不了自己启动的
+后台任务状态，得自己去读 `~/.codex/sessions/**/rollout-*.jsonl`。
+结论：派出去之后要主动查产物，不能等；等不到就自己写。
+
+**PGlite 的两个坑。**
+① `db.execute()` 走预处理语句，一次只能一条命令；多条 SQL 的建表和造数必须用
+`client.exec()`。② `numeric[]` 不一定返回 JS 数组，可能是 Postgres 字面量字符串
+`"{0.500,0.300,0.200}"`。别假设驱动行为。
+
+**Drizzle 的 timestamp 辅助函数不要写死列名。**
+`const created = () => timestamp("created_at", ...)` 会让 `assignedAt: created()`
+生成 `created_at` 而不是 `assigned_at`，joined_at / uploaded_at / settled_at 全中招。
+
+**vitest 不读 tsconfig 的路径别名**，`@/` 要在 `vitest.config.mts` 里单独配。
 
 **审 codex 产出时抓到一个可套利的规则漏洞：执行者猜自己领的任务。**
 你知道自己的任务原文。如果知道自己完不成、公投必然过不了（拿 0 份），
@@ -153,6 +178,20 @@ v0.3 改成一票否决后前提消失——他已经归零，没有可保护的
 7. 0.5 / 0.3 / 0.2 的梯度够不够刺激「早猜早得」？
 
 ---
+
+## 已就位、可直接用的东西
+
+```bash
+pnpm test          # 107 个测试，无需 docker
+pnpm dev           # 开发服务器
+python scripts/subset_fonts.py   # 字体子集化（需先下载源字体到 fonts/src/）
+```
+
+- `src/core/` 四个纯模块：assign / bounty / settle / visibility / lifecycle
+- `src/db/` schema + PGlite 内存库 + 幂等的状态推进与分配事务
+- `src/ai/` 归一化契约 + 三档输出校验 + MediaPlanner + MockProvider
+- `src/components/Redacted.tsx` 双手势揭示组件
+- `/` 是 Spike C 的真机调参页
 
 ## 当前阻塞
 
