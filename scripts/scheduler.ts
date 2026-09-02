@@ -3,9 +3,13 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { configureNetwork } from "../src/ai/net";
 import { advanceActivity, findAdvanceable, type AdvanceResult } from "../src/db/queries/lifecycle";
+import { purgeExpiredActivities, type RetentionResult } from "../src/db/queries/retention";
 import type { Db } from "../src/db/client";
+import { LocalStorage } from "../src/storage/local";
+import type { StoragePort } from "../src/storage/types";
 
 const INTERVAL_MS = 30_000;
+const RETENTION_INTERVAL_MS = 60 * 60 * 1000;
 
 export interface SchedulerRoundResult {
   scanned: number;
@@ -16,6 +20,7 @@ export interface SchedulerRoundResult {
 export interface SchedulerDependencies {
   findAdvanceable: (now: Date) => Promise<string[]>;
   advanceActivity: (activityId: string, now: Date) => Promise<AdvanceResult>;
+  purgeExpiredActivities?: (now: Date) => Promise<RetentionResult>;
   log: (message: string) => void;
   error: (message: string, error: unknown) => void;
 }
@@ -48,9 +53,11 @@ export async function runSchedulerRound(
 }
 
 function createDependencies(client: Db): SchedulerDependencies {
+  const storage: StoragePort = new LocalStorage();
   return {
     findAdvanceable: (now) => findAdvanceable(client, now),
     advanceActivity: (activityId, now) => advanceActivity(client, activityId, now),
+    purgeExpiredActivities: (now) => purgeExpiredActivities(client, storage, now, Number(process.env.RETENTION_DAYS ?? 7)),
     log: (message) => console.log(`[scheduler] ${message}`),
     error: (message, error) => console.error(`[scheduler] ${message}`, error),
   };
@@ -78,6 +85,7 @@ export async function runScheduler(dependencies: SchedulerDependencies): Promise
   let stopping = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let resume: (() => void) | undefined;
+  let lastRetentionAt = 0;
   const requestStop = (signal: NodeJS.Signals) => {
     if (stopping) return;
     stopping = true;
@@ -95,6 +103,12 @@ export async function runScheduler(dependencies: SchedulerDependencies): Promise
     while (!stopping) {
       try {
         await runSchedulerRound(dependencies, new Date());
+        const now = new Date();
+        if (dependencies.purgeExpiredActivities && now.getTime() - lastRetentionAt >= RETENTION_INTERVAL_MS) {
+          const result = await dependencies.purgeExpiredActivities(now);
+          lastRetentionAt = now.getTime();
+          dependencies.log(`清理完成：活动 ${result.purged} 个，文件 ${result.filesDeleted} 个，失败 ${result.failed} 个`);
+        }
       } catch (error) {
         dependencies.error("本轮扫描失败，30 秒后重试", error);
       }

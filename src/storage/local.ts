@@ -26,15 +26,15 @@ function signatureFor(operation: SignedOperation, key: string, expiresAt: string
 
 function signedUrl(operation: SignedOperation, key: string, expiresAt: Date, mime = ""): string {
   const params = new URLSearchParams({
-    key,
-    expires: expiresAt.getTime().toString(),
-    mime,
-    signature: signatureFor(operation, key, expiresAt.getTime().toString(), mime),
+    exp: expiresAt.getTime().toString(),
+    sig: signatureFor(operation, key, expiresAt.getTime().toString(), mime),
   });
-  return `local-storage://${operation}?${params}`;
+  const path = `/api/storage/${key.split("/").map(encodeURIComponent).join("/")}?${params}`;
+  const baseUrl = process.env.PUBLIC_BASE_URL?.replace(/\/$/, "");
+  return baseUrl ? `${baseUrl}${path}` : path;
 }
 
-function safePath(root: string, key: string): string {
+export function safePath(root: string, key: string): string {
   const target = resolve(root, key);
   if (target !== root && !target.startsWith(`${root}${sep}`)) {
     throw new Error("storage key 超出本地存储目录");
@@ -42,26 +42,28 @@ function safePath(root: string, key: string): string {
   return target;
 }
 
-export function verifyLocalSignature(url: string): boolean {
+export function verifyLocalSignature(
+  operation: SignedOperation,
+  key: string,
+  expires: string | null,
+  mime: string,
+  signature: string | null,
+  now = Date.now(),
+): boolean {
   try {
-    const parsed = new URL(url);
-    if (parsed.protocol !== "local-storage:" || !["upload", "download"].includes(parsed.hostname)) {
+    if (expires === null || signature === null || !Number.isFinite(Number(expires)) || now > Number(expires)) {
       return false;
     }
 
-    const key = parsed.searchParams.get("key");
-    const expires = parsed.searchParams.get("expires");
-    const mime = parsed.searchParams.get("mime") ?? "";
-    const signature = parsed.searchParams.get("signature");
-    if (key === null || expires === null || signature === null || Date.now() > Number(expires)) {
-      return false;
-    }
-
-    const expected = signatureFor(parsed.hostname as SignedOperation, key, expires, mime);
+    const expected = signatureFor(operation, key, expires, mime);
     return signature.length === expected.length && timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
   } catch {
     return false;
   }
+}
+
+export function localStoragePath(key: string, root = ".storage"): string {
+  return safePath(resolve(root), key);
 }
 
 export class LocalStorage implements StoragePort {
