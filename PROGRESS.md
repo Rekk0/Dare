@@ -252,6 +252,12 @@ DOM 初始化的代价，实测 environment 占 215s。改成默认 node、
 environment 降到 38s，总时长 75s -> 60s。
 注意 vitest 4 里 `environmentMatchGlobs` 已经不生效，docblock 是现在的做法。
 
+**`tsc --noEmit` 和 `next build` 检查的文件集不同。**
+我用 poolOptions 配 vitest 并行度, tsc 过了、测试也跑了(运行时被忽略),
+但 next build 的 type check 报 `poolOptions does not exist in InlineConfig`。
+前者漏掉了 vitest.config.mts。**提交前两个都要跑。**
+vitest 4 用顶层 maxWorkers。
+
 **移动端长按天生难做。** 系统的文本选择、放大镜、右键菜单、滚动手势都会来抢。
 必须 `contextmenu` preventDefault + `user-select: none` + `-webkit-touch-callout: none` + `touch-action: none`。
 **真机验证，模拟器不算。**

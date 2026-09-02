@@ -32,10 +32,11 @@ export default defineConfig({
     /**
      * 限制并行度。db 测试同时起太多 PGlite 实例是上面那个超时的根因，
      * 限流比一味加长超时更能治本。
+     *
+     * 用顶层 maxWorkers 而不是 poolOptions：vitest 4 的 InlineConfig
+     * 类型里没有 poolOptions，运行时会被忽略但 next build 的 type check 会报错。
+     * 注意 tsc --noEmit 和 next build 检查的文件集不同，前者漏掉了这个配置文件。
      */
-    poolOptions: {
-      threads: { maxThreads: 4 },
-      forks: { maxForks: 4 },
-    },
+    maxWorkers: 4,
   },
 });
