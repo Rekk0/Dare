@@ -32,7 +32,7 @@
 
 | # | 里程碑 | 状态 | 备注 |
 |---|---|---|---|
-| M0 | 地基与技术验证 | 🟡 大部分完成 | Spike B 通过；Spike C 代码通过、待真机；Spike A 缺 key 阻塞 |
+| M0 | 地基与技术验证 | 🟡 | Spike B ✅；**Spike C ✅ 真机通过并调定参数**；Spike A 缺 key 阻塞 |
 | M1 | 结算引擎（纯函数） | ✅ 完成 | 19 个测试全绿，含 10000 组 property test |
 | M2 | 可见性 + 数据层 + 生命周期 | ✅ 完成 | 可见性矩阵每格有测试；DB 约束 + 并发幂等已验 |
 | M3 | AI 层 + 任务预审 | 🟡 抽象层完成 | types/validate/planner/MockProvider 就位；缺 google-genai adapter 与预审 |
@@ -74,6 +74,25 @@
 按时间倒序。**只记结论和「为什么」，不记过程。**
 
 ### 2026-09-02（实现期）
+
+**真机测试必须用生产构建，dev 构建过不了手机热点。**
+Spike C 在手机上「点和按完全没反应」查了很久：内联 JS 能跑、Intl.Segmenter 有、
+15 个 script 标签都在、零报错，但 React 就是不接管。换成 `next build && next start`
+之后立刻正常（脚本从 15 个降到 7 个）。dev 的 bundle 有几十个 chunk 加 HMR 运行时和
+websocket，过手机热点又慢又容易卡死在 hydration 之前。
+**教训：真机验手感一律用生产构建，dev 的性能不代表真实体验。**
+
+**诊断代码不能依赖被诊断的东西。**
+第一版把 window.onerror 注册在 useEffect 里 : 而当时的故障恰恰是 React 没接管，
+useEffect 根本不跑，诊断全瞎。第二版改成 SSR HTML 里的内联 script，
+只要浏览器肯执行 JS 就会跑，才拿到了有用的信息。
+
+**探针只探一次分不清「坏了」和「慢」。** 第一版只在 3 秒时查一次 hydration，
+改成每秒轮询到 25 秒并报告用时之后，问题定位快了很多。
+
+**TaskStop 只停包装进程，node 进程会活下来占着端口。**
+换服务器时要 `Stop-Process -Id <pid>`，否则新服务器起不来（EADDRINUSE）而你
+还以为它起来了 : curl 拿到的 200 是旧进程回的。
 
 **codex 子代理会「只输出计划就结束」。**
 M2 派出去后 35 秒就 task_complete，最后一句是「方案已核对，准备按以下边界实现」，
@@ -198,12 +217,7 @@ python scripts/subset_fonts.py   # 字体子集化（需先下载源字体到 fo
 **① Spike A 缺 API key。** 需要一个 Gemini（或其他多模态厂商）的 key 才能实测能力矩阵。
 这个结论决定 Phase 1 要不要写 ffmpeg 抽帧 + ASR 降级管线，是最该早知道的一件事。
 
-**② Spike C 需要真机。** 移动端长按跟系统的文本选择、放大镜、右键菜单、滚动手势打架，
-模拟器和内置浏览器都不算数。
-
-跑起来：`pnpm dev -- -H 0.0.0.0`，手机连同一个 Wi-Fi 打开 `http://<本机IP>:3000`。
-页面上带 step / dwell 两个滑杆，**可见窗口是唯一靠手感定的参数**，
-调出舒服的数值告诉我，我改进 `DEFAULT_STEP_MS` / `DEFAULT_DWELL_MS`。
+**② iOS Safari 尚未验证 Spike C。** Android Chrome 已通过。
 
 **已知的量具问题**：本机内置浏览器的 `getComputedStyle` 返回陈旧值，
 读不出内联样式的变化。验证 Redacted 的状态要读 `element.style`，不要读计算样式。

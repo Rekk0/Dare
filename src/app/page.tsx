@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import Redacted, { DEFAULT_DWELL_MS, DEFAULT_STEP_MS } from "@/components/Redacted";
 
 /**
@@ -22,29 +22,6 @@ export default function SpikePage() {
   const [step, setStep] = useState(DEFAULT_STEP_MS);
   const [dwell, setDwell] = useState(DEFAULT_DWELL_MS);
   const [mode, setMode] = useState("idle");
-  const [log, setLog] = useState<string[]>([]);
-  // SSR 出来是 false。翻不成 true 就说明 React 根本没接管这个页面
-  const [hydrated, setHydrated] = useState(false);
-  const [jsError, setJsError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setHydrated(true);
-    const onErr = (e: ErrorEvent) => setJsError(`${e.message} @ ${e.filename}:${e.lineno}`);
-    const onRej = (e: PromiseRejectionEvent) => setJsError(`未处理的 Promise: ${String(e.reason)}`);
-    window.addEventListener("error", onErr);
-    window.addEventListener("unhandledrejection", onRej);
-    return () => {
-      window.removeEventListener("error", onErr);
-      window.removeEventListener("unhandledrejection", onRej);
-    };
-  }, []);
-
-  // 真机排查用。手势没反应时把这块念出来就知道是哪个环节断的
-  const pushLog = useCallback((line: string) => {
-    const t = new Date().toISOString().slice(17, 23);
-    setLog((prev) => [`${t} ${line}`, ...prev].slice(0, 10));
-  }, []);
-
   const windowChars = (dwell / step).toFixed(1);
   const totalMs = Array.from(SAMPLE).length * step + dwell + 500;
 
@@ -59,21 +36,6 @@ export default function SpikePage() {
         </h1>
       </header>
 
-      {/* React 有没有接管。翻不成绿色就说明 hydration 挂了，
-          页面看着正常但一个事件监听都没绑上 */}
-      <div
-        className="rounded-xl border px-4 py-3 font-mono text-[11px] leading-relaxed"
-        style={{
-          borderColor: hydrated ? "var(--gain)" : "var(--alarm)",
-          color: hydrated ? "var(--gain)" : "var(--alarm)",
-        }}
-      >
-        {hydrated ? "JS 已接管，手势应当可用" : "JS 未接管，手势不会有任何反应"}
-        {jsError ? (
-          <div className="mt-2 whitespace-pre-wrap text-alarm">报错: {jsError}</div>
-        ) : null}
-      </div>
-
       <section className="rounded-2xl border border-line bg-surface p-5">
         <p className="mb-3 font-mono text-[9px] tracking-[0.2em] text-dim">你的任务</p>
         <Redacted
@@ -81,7 +43,6 @@ export default function SpikePage() {
           stepMs={step}
           dwellMs={dwell}
           onModeChange={setMode}
-          onEvent={pushLog}
         />
         <p className="mt-11 text-center font-mono text-[9.5px] tracking-[0.16em] text-dim">
           {MODE_HINT[mode]}
@@ -131,25 +92,6 @@ export default function SpikePage() {
         <p className="font-mono text-[10.5px] leading-relaxed text-dim tabular-nums">
           全程 {(totalMs / 1000).toFixed(1)}s · 共 {Array.from(SAMPLE).length} 字
         </p>
-      </section>
-
-      <section className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-5">
-        <div className="flex items-baseline justify-between">
-          <span className="text-[13px] font-bold text-bright">事件日志</span>
-          <button
-            type="button"
-            onClick={() => setLog([])}
-            className="font-mono text-[10px] tracking-[0.14em] text-dim underline"
-          >
-            清空
-          </button>
-        </div>
-        <p className="text-[11.5px] leading-relaxed text-dim">
-          手势没反应时，把下面这几行念给 Claude，就知道是哪个环节断的。
-        </p>
-        <pre className="mt-1 max-h-44 overflow-auto whitespace-pre-wrap font-mono text-[10.5px] leading-[1.7] text-body">
-{log.length ? log.join("\n") : "（还没有事件，试着点一下或按住上面的任务卡）"}
-        </pre>
       </section>
 
       <section className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-5 text-[12.5px] leading-relaxed text-dim">

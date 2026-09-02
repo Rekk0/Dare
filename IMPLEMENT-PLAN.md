@@ -14,7 +14,7 @@
 
 **交付物**
 
-1. Next.js 15 + TS + Tailwind v4 骨架，`docker compose up` 起 postgres / redis / minio
+1. Next.js 16 + TS + Tailwind v4 骨架（本机无 docker，数据库用 PGlite）
 2. **Spike A — 厂商能力实测**：`scripts/providers-check.ts`，拿一张小图 / 3s 音频 / 3s 视频，
    对 Gemini 各跑一次，打印**实测**能力矩阵
 3. **Spike B — 字体子集化**：得意黑全量 5MB+，移动端不可接受。跑通 `pyftsubset`，
@@ -25,14 +25,14 @@
 
 - [ ] Spike A 打印出真实能力矩阵，确认 Gemini 是否真的原生吃视频。**若不吃，M4 的媒体方案当场改**
 - [ ] Spike B 子集化后 display 字体 < 100KB
-- [ ] Spike C 在真机 iOS Safari + Android Chrome 上全部通过：
+- [x] ✅ Spike C 在真机 Android Chrome 上通过（2026-09-02）。iOS Safari 待验：
   - 按住 800ms 全显、松手瞬间盖回
   - 点一下逐字显示逐字渐隐，播放中再点立刻全清
   - 长按和点击不误判（含滚动时不误触发）
   - 不唤起系统文本选择 / 放大镜 / 右键菜单
   - 逐字过程中文字不跳版
-- [ ] **可见窗口手感确认**：真机上读一个 30 字任务，判断 `DWELL/STEP ≈ 7 字` 合不合适。
-      这是唯一必须靠手感定的参数，读不完就调大，露太多就调小
+- [x] **可见窗口手感确认**：✅ 真机调定 **step 150ms / dwell 800ms，窗口 5.3 字**。
+      设计阶段拍的 7 字偏多
 
 > **Spike C 是最容易翻车的一个。** 移动端长按天生跟系统的文本选择、放大镜、
 > 右键菜单、滚动手势打架，再叠一个点击手势要做消歧。必须真机验证，模拟器不算。

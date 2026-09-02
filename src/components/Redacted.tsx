@@ -7,14 +7,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  *
  * 两种手势防的不是同一个威胁：
  *   按住 800ms  全文显示，松手瞬间盖回：防「什么时候看」，你自己挑安全时机
- *   点一下      逐字显示、逐字渐隐    ：防「被瞟一眼」，任何瞬间只有约 7 个字在屏上
+ *   点一下      逐字显示、逐字渐隐    ：防「被瞟一眼」，任何瞬间只有约 5 个字在屏上
  *   播放中再点  立刻全清              ：急停。有人凑过来时的唯一出路
  *
  * 必须整块盖，绝不能只盖关键词：留着「在包厢里，让 ██ 的人主动唱一首 ██」这样的骨架，
  * 邻座扫一眼就能补全。部分防窥等于没有防窥。
  */
 
-export const DEFAULT_STEP_MS = 110;
+export const DEFAULT_STEP_MS = 150;
 export const DEFAULT_DWELL_MS = 800;
 const HOLD_MS = 800;
 /** 逐字放完后，最后一个字渐隐完再复位。需要 >= CSS 里的渐隐时长 420ms */
@@ -72,7 +72,7 @@ function barWidths(unitCount: number): string[] {
 
 export interface RedactedProps {
   text: string;
-  /** 出字间隔。可见窗口 = dwell / step，默认约 7 个字 */
+  /** 出字间隔。可见窗口 = dwell / step，默认约 5.3 个字（真机调出来的） */
   stepMs?: number;
   /** 每个字停留多久开始渐隐 */
   dwellMs?: number;
