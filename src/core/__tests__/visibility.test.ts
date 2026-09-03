@@ -13,7 +13,7 @@ import {
   toGuessOutcome,
   type ActivityStatus,
   type AssignmentFacts,
-  type AssignmentRow,
+  type RevealAssignmentRow,
 } from "../visibility";
 
 /**
@@ -220,11 +220,13 @@ describe("投票资格", () => {
 });
 
 describe("DTO 裁剪", () => {
-  const row: AssignmentRow = {
+  const row: RevealAssignmentRow = {
     ...A,
     busted: true,
     taskContent: "让坐你右边的人主动唱一首粤语歌",
     bustedByPid: "carol",
+    evidence: [{ id: "e1", kind: "image", url: "/evidence.jpg", mime: "image/jpeg" }],
+    aiReport: { summary: "证据里有人在唱歌" },
   };
 
   it("running 阶段：执行者看得到内容和被识破，但看不到是谁", () => {
@@ -251,6 +253,20 @@ describe("DTO 裁剪", () => {
     expect(dto.bustedByPid).toBeNull();
     expect(dto.busted).toBe(false); // 中途不暴露别人已出局
     expect(dto.canVote).toBe(false); // busted 的不进公投
+    expect(dto.evidence).toEqual(row.evidence);
+    expect(dto.aiReport).toEqual(row.aiReport);
+  });
+
+  it("running 阶段非执行者拿到空证据和空报告", () => {
+    const dto = projectReveal(v("carol", "running"), row);
+    expect(dto.evidence).toEqual([]);
+    expect(dto.aiReport).toBeNull();
+  });
+
+  it("running 阶段执行者能看到自己的证据，但 AI 报告仍保密", () => {
+    const dto = projectReveal(v("alice", "running"), row);
+    expect(dto.evidence).toEqual(row.evidence);
+    expect(dto.aiReport).toBeNull();
   });
 
   it("settled 后第三方拿到完整信息", () => {

@@ -14,9 +14,9 @@ async function seed(id: string, status: "settled" | "voting", voteDeadline: Date
   const suffix = id.replace(/[^a-z]/g, "");
   await client.exec(`
     INSERT INTO users (id, nickname, device_token_hash, recovery_code) VALUES ('u${suffix}', '用户', 'hash', 'recovery');
-    INSERT INTO activities (id, code, creator_id, title, scene_type, start_at, end_at, vote_deadline, share_desc, status)
+    INSERT INTO activities (id, code, creator_id, title, scene_type, task_deadline, start_at, end_at, vote_deadline, share_desc, status)
       VALUES ('${id}', '${suffix.padEnd(6, "X").slice(0, 6)}', 'u${suffix}', '活动', 'other',
-        to_timestamp(${(voteDeadline.getTime() - 7200_000) / 1000}), to_timestamp(${(voteDeadline.getTime() - 3600_000) / 1000}),
+        to_timestamp(${(voteDeadline.getTime() - 7200_000) / 1000}), to_timestamp(${(voteDeadline.getTime() - 7200_000) / 1000}), to_timestamp(${(voteDeadline.getTime() - 3600_000) / 1000}),
         to_timestamp(${voteDeadline.getTime() / 1000}), '奖励', '${status}');
     INSERT INTO participants (id, activity_id, user_id) VALUES ('p${suffix}', '${id}', 'u${suffix}');
     INSERT INTO tasks (id, activity_id, author_pid, content, status) VALUES ('t${suffix}', '${id}', 'p${suffix}', '任务', 'accepted');

@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import AiThinking from "@/components/AiThinking";
 import GuessResult from "@/components/GuessResult";
 import type { GuessResultDto } from "@/core/visibility";
 
@@ -17,6 +18,7 @@ export default function GuessPage() {
   const [text, setText] = useState("");
   const [result, setResult] = useState<GuessResultDto | null>(null);
   const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     fetch(`/api/activities/${id}/participants`)
@@ -33,21 +35,34 @@ export default function GuessPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     setError("");
+    setPending(true);
     const response = await fetch(`/api/activities/${id}/guesses`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ targetPid, text }),
     });
+    setPending(false);
     if (!response.ok) return setError("这次猜不了。换个对象或晚点再来。");
     setResult((await response.json()) as GuessResultDto);
   }
 
-  if (result) return <GuessResult {...result} />;
+  // 猜完给出路：还有配额就能接着猜，也能直接回这一局
+  if (result) {
+    return (
+      <GuessResult
+        {...result}
+        activityId={id}
+        onAgain={() => { setResult(null); setText(""); setTargetPid(""); }}
+      />
+    );
+  }
 
   return (
     <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
-      <p className="text-[12px] tracking-[.3em] text-mark">猜测</p>
+      <a href={`/a/${id}`} className="text-[13px] text-dim">&lt; 回这一局</a>
+      <p className="mt-6 text-[12px] tracking-[.3em] text-mark">猜测</p>
       <h1 className="mt-3 text-3xl font-bold text-bright">你觉得他在干嘛？</h1>
       <p className="mt-3 text-[14px] leading-6 text-dim">
         猜中了，他那一份归你一部分。猜错不扣，但配额有限。
@@ -82,11 +97,16 @@ export default function GuessPage() {
 
         <div className="mt-auto">
           <button
-            disabled={!targetPid || !text.trim()}
+            disabled={pending || !targetPid || !text.trim()}
             className="min-h-14 w-full rounded-full bg-mark font-bold text-ground disabled:bg-raised disabled:text-dim"
           >
-            提交猜测
+            {pending ? "判定中" : "提交猜测"}
           </button>
+          {pending ? (
+            <div className="mt-4">
+              <AiThinking label="AI 正在比对你猜的和他的题" />
+            </div>
+          ) : null}
           {error ? (
             <p role="alert" className="mt-3 text-[13px] text-alarm">
               {error}

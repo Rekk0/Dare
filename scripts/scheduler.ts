@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { configureNetwork } from "../src/ai/net";
-import { advanceActivity, findAdvanceable, type AdvanceResult } from "../src/db/queries/lifecycle";
+import { advanceActivity, findAdvanceable, sweepPendingEvidenceReports, type AdvanceResult } from "../src/db/queries/lifecycle";
 import { purgeExpiredActivities, type RetentionResult } from "../src/db/queries/retention";
 import type { Db } from "../src/db/client";
 import { LocalStorage } from "../src/storage/local";
@@ -20,6 +20,8 @@ export interface SchedulerRoundResult {
 export interface SchedulerDependencies {
   findAdvanceable: (now: Date) => Promise<string[]>;
   advanceActivity: (activityId: string, now: Date) => Promise<AdvanceResult>;
+  /** 补跑漏掉的证据评审，返回补了哪几局 */
+  sweepEvidenceReports: () => Promise<string[]>;
   purgeExpiredActivities?: (now: Date) => Promise<RetentionResult>;
   log: (message: string) => void;
   error: (message: string, error: unknown) => void;
@@ -47,6 +49,10 @@ export async function runSchedulerRound(
     }
   }
 
+  // 评审只在推进那一瞬间跑一次，进程在中途重启会漏掉几份，补上
+  const swept = await dependencies.sweepEvidenceReports();
+  if (swept.length) dependencies.log(`补跑了 ${swept.length} 局的证据评审`);
+
   const result = { scanned: activityIds.length, advanced, failed };
   dependencies.log(`本轮完成：扫描到 ${result.scanned} 个，推进了 ${result.advanced} 个，失败 ${result.failed} 个`);
   return result;
@@ -57,6 +63,7 @@ function createDependencies(client: Db): SchedulerDependencies {
   return {
     findAdvanceable: (now) => findAdvanceable(client, now),
     advanceActivity: (activityId, now) => advanceActivity(client, activityId, now),
+    sweepEvidenceReports: () => sweepPendingEvidenceReports(client),
     purgeExpiredActivities: (now) => purgeExpiredActivities(client, storage, now, Number(process.env.RETENTION_DAYS ?? 7)),
     log: (message) => console.log(`[scheduler] ${message}`),
     error: (message, error) => console.error(`[scheduler] ${message}`, error),

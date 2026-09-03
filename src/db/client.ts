@@ -1,5 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
+import { DEFAULT_POLICY } from "@/core/review-policy";
 import * as schema from "./schema";
 
 /**
@@ -61,9 +62,17 @@ CREATE TABLE activities (
   title text NOT NULL,
   scene_type text NOT NULL,
   scene_desc text NOT NULL DEFAULT '',
+  min_feasibility integer NOT NULL DEFAULT ${DEFAULT_POLICY.minFeasibility},
+  min_stealth integer NOT NULL DEFAULT ${DEFAULT_POLICY.minStealth},
+  min_fun integer NOT NULL DEFAULT ${DEFAULT_POLICY.minFun},
+  min_verifiability integer NOT NULL DEFAULT ${DEFAULT_POLICY.minVerifiability},
+  edginess integer NOT NULL DEFAULT ${DEFAULT_POLICY.edginess},
+  task_deadline timestamptz NOT NULL,
   start_at timestamptz NOT NULL,
   end_at timestamptz NOT NULL,
   vote_deadline timestamptz NOT NULL,
+  min_players integer NOT NULL DEFAULT 3,
+  max_players integer NOT NULL DEFAULT 21,
   share_desc text NOT NULL,
   share_value numeric(12,2),
   bounty_tiers numeric(4,3)[] NOT NULL DEFAULT ARRAY[0.5, 0.3, 0.2]::numeric(4,3)[],
@@ -72,7 +81,7 @@ CREATE TABLE activities (
   vote_pass_ratio numeric(4,3) NOT NULL DEFAULT 0.5,
   status text NOT NULL DEFAULT 'draft',
   created_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT activities_time_order CHECK (start_at < end_at AND end_at < vote_deadline),
+  CONSTRAINT activities_time_order CHECK (task_deadline <= start_at AND start_at < end_at AND end_at < vote_deadline),
   CONSTRAINT activities_quota_positive CHECK (guess_quota >= 0)
 );
 CREATE UNIQUE INDEX activities_code_uq ON activities (code);
@@ -83,6 +92,7 @@ CREATE TABLE participants (
   activity_id text NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
   user_id text NOT NULL REFERENCES users(id),
   joined_at timestamptz NOT NULL DEFAULT now()
+  ,eliminated_at timestamptz
 );
 CREATE UNIQUE INDEX participants_activity_user_uq ON participants (activity_id, user_id);
 
@@ -135,6 +145,7 @@ CREATE TABLE ai_reports (
   usage jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE UNIQUE INDEX ai_reports_assignment_uq ON ai_reports (assignment_id);
 
 CREATE TABLE guesses (
   id text PRIMARY KEY,

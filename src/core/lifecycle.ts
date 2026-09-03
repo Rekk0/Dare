@@ -11,6 +11,7 @@ import type { ActivityStatus } from "./visibility";
 
 export interface ActivitySchedule {
   status: ActivityStatus;
+  taskDeadline: Date;
   startAt: Date;
   endAt: Date;
   voteDeadline: Date;
@@ -36,7 +37,7 @@ export function nextTransition(a: ActivitySchedule, now: Date): Transition {
       return { kind: "none", reason: "草稿要由创建者手动发布" };
 
     case "recruiting":
-      if (now >= a.startAt) {
+      if (now >= a.taskDeadline) {
         return { kind: "advance", from: "recruiting", to: "locked", action: "nothing" };
       }
       return { kind: "none", reason: "未到开始时间" };
@@ -45,7 +46,11 @@ export function nextTransition(a: ActivitySchedule, now: Date): Transition {
       // locked 是一个瞬时状态：拿到锁之后立刻分配并进入 running。
       // 单独设这个状态是为了让「锁定」和「分配」是两个独立的幂等步骤，
       // 分配失败时活动停在 locked，可以重试，而不是卡在 recruiting 被反复触发。
-      return { kind: "advance", from: "locked", to: "running", action: "assign" };
+      return { kind: "advance", from: "locked", to: "assigned", action: "assign" };
+
+    case "assigned":
+      if (now >= a.startAt) return { kind: "advance", from: "assigned", to: "running", action: "nothing" };
+      return { kind: "none", reason: "未到开始时间" };
 
     case "running":
       if (now >= a.endAt) {
@@ -71,10 +76,32 @@ export interface ScheduleProblem {
 
 /** 建活动时的时间校验。顺序错了整个状态机会卡死 */
 export function validateSchedule(
-  s: Pick<ActivitySchedule, "startAt" | "endAt" | "voteDeadline">,
+  s: Pick<ActivitySchedule, "startAt" | "endAt" | "voteDeadline"> & Partial<Pick<ActivitySchedule, "taskDeadline">>,
   now: Date,
 ): ScheduleProblem[] {
   const problems: ScheduleProblem[] = [];
+  const taskDeadline = s.taskDeadline ?? s.startAt;
+
+  // 非法日期必须先挡掉。Invalid Date 参与比较时全部返回 false，
+  // 下面每一条检查都会「通过」，一个没填全的表单反而能过校验，
+  // 然后死在数据库那层，报出来的错跟时间没有任何关系。
+  const labels: [string, Date, string][] = [
+    ["taskDeadline", taskDeadline, "最晚交题时间"],
+    ["startAt", s.startAt, "开始时间"],
+    ["endAt", s.endAt, "结束时间"],
+    ["voteDeadline", s.voteDeadline, "投票截止"],
+  ];
+  const invalid = labels.filter(([, value]) => Number.isNaN(value.getTime()));
+  if (invalid.length) {
+    return invalid.map(([field, , label]) => ({ field, message: `${label}没填，或者填得不对` }));
+  }
+
+  if (taskDeadline <= now) {
+    problems.push({ field: "taskDeadline", message: "最晚交题时间必须晚于现在" });
+  }
+  if (s.startAt < taskDeadline) {
+    problems.push({ field: "startAt", message: "开始时间不能早于最晚交题时间" });
+  }
   if (s.startAt <= now) {
     problems.push({ field: "startAt", message: "开始时间必须晚于现在" });
   }
@@ -105,6 +132,7 @@ export interface AssignRoster {
 }
 
 export const MIN_PLAYERS = 3;
+export const HARD_MIN_PLAYERS = 3;
 
 /**
  * 支持的人数上限。
@@ -114,6 +142,14 @@ export const MIN_PLAYERS = 3;
  * 公投会全部走 AI 兜底，形同虚设。
  */
 export const MAX_PLAYERS = 21;
+export const HARD_MAX_PLAYERS = 21;
+
+export function validatePlayerRange(min: number, max: number): { minPlayers: number; maxPlayers: number } {
+  if (!Number.isInteger(min) || !Number.isInteger(max) || min < HARD_MIN_PLAYERS || max > HARD_MAX_PLAYERS || min > max) {
+    throw new Error(`人数必须是 ${HARD_MIN_PLAYERS} 到 ${HARD_MAX_PLAYERS} 的整数，且下限不能大于上限`);
+  }
+  return { minPlayers: min, maxPlayers: max };
+}
 
 /**
  * 猜测配额随人数走。
@@ -161,11 +197,11 @@ export class TooManyPlayersError extends Error {
   }
 }
 
-export function assertPlayerCount(roster: AssignRoster): void {
-  if (roster.players.length < MIN_PLAYERS) {
+export function assertPlayerCount(roster: AssignRoster, minPlayers = MIN_PLAYERS, maxPlayers = MAX_PLAYERS): void {
+  if (roster.players.length < minPlayers) {
     throw new NotEnoughPlayersError(roster.players.length);
   }
-  if (roster.players.length > MAX_PLAYERS) {
+  if (roster.players.length > maxPlayers) {
     throw new TooManyPlayersError(roster.players.length);
   }
 }

@@ -19,6 +19,7 @@ export type ActivityStatus =
   | "draft"
   | "recruiting"
   | "locked"
+  | "assigned"
   | "running"
   | "voting"
   | "settled";
@@ -27,9 +28,10 @@ const ORDER: Record<ActivityStatus, number> = {
   draft: 0,
   recruiting: 1,
   locked: 2,
-  running: 3,
-  voting: 4,
-  settled: 5,
+  assigned: 3,
+  running: 4,
+  voting: 5,
+  settled: 6,
 };
 
 export function atLeast(status: ActivityStatus, min: ActivityStatus): boolean {
@@ -170,6 +172,25 @@ export interface AssignmentRow extends AssignmentFacts {
   bustedByPid: string | null;
 }
 
+export interface EvidenceDto {
+  id: string;
+  kind: "image" | "audio" | "video";
+  /** 签名过的可访问地址，由调用方填 */
+  url: string;
+  mime: string;
+}
+
+/** 只保留可公开的评审摘要，绝不能带任务正文或内部推理。 */
+export interface PublicAiReportDto {
+  verdict?: string;
+  summary: string;
+}
+
+export interface RevealAssignmentRow extends AssignmentRow {
+  evidence: EvidenceDto[];
+  aiReport: PublicAiReportDto | null;
+}
+
 /** 按可见性裁剪出执行者视角的 DTO。裁剪在这里做，不在 route handler 里做 */
 export function projectMyAssignment(v: Viewer, row: AssignmentRow): MyAssignmentDto {
   return {
@@ -190,9 +211,13 @@ export interface RevealAssignmentDto {
   busted: boolean;
   bustedByPid: string | null;
   canVote: boolean;
+  /** 不可见时是空数组，不是 null */
+  evidence: EvidenceDto[];
+  /** 不可见或还没跑完时为 null */
+  aiReport: PublicAiReportDto | null;
 }
 
-export function projectReveal(v: Viewer, row: AssignmentRow): RevealAssignmentDto {
+export function projectReveal(v: Viewer, row: RevealAssignmentRow): RevealAssignmentDto {
   return {
     assignmentId: row.assignmentId,
     assigneePid: row.assigneePid,
@@ -201,5 +226,7 @@ export function projectReveal(v: Viewer, row: AssignmentRow): RevealAssignmentDt
     busted: canSeeBusted(v, row) ? row.busted : false,
     bustedByPid: canSeeGuesserIdentity(v, row) ? row.bustedByPid : null,
     canVote: canVote(v, row),
+    evidence: canSeeEvidence(v, row) ? row.evidence : [],
+    aiReport: canSeeAiReport(v, row) ? row.aiReport : null,
   };
 }

@@ -12,8 +12,8 @@ async function seed() {
   await client.exec(`
     INSERT INTO users (id, nickname, device_token_hash, recovery_code) VALUES
       ('u1','甲','h1','r1'), ('u2','乙','h2','r2'), ('u3','丙','h3','r3'), ('u4','丁','h4','r4');
-    INSERT INTO activities (id, code, creator_id, title, scene_type, start_at, end_at, vote_deadline, share_desc, guess_quota)
-      VALUES ('act1','ABC123','u1','派对','ktv', to_timestamp(${(now + 3600000) / 1000}), to_timestamp(${(now + 7200000) / 1000}), to_timestamp(${(now + 10800000) / 1000}), '一份奖励', 3);
+    INSERT INTO activities (id, code, creator_id, title, scene_type, task_deadline, start_at, end_at, vote_deadline, share_desc, guess_quota)
+      VALUES ('act1','ABC123','u1','派对','ktv', to_timestamp(${(now + 3600000) / 1000}), to_timestamp(${(now + 3600000) / 1000}), to_timestamp(${(now + 7200000) / 1000}), to_timestamp(${(now + 10800000) / 1000}), '一份奖励', 3);
     INSERT INTO participants (id, activity_id, user_id) VALUES
       ('p1','act1','u1'), ('p2','act1','u2'), ('p3','act1','u3'), ('p4','act1','u4');
     INSERT INTO tasks (id, activity_id, author_pid, content, status) VALUES

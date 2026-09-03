@@ -24,7 +24,7 @@ export async function GET(
     const { pid } = await requireParticipant(id);
 
     const rows = await (await db)
-      .select({ pid: participants.id, nickname: users.nickname })
+      .select({ pid: participants.id, nickname: users.nickname, eliminatedAt: participants.eliminatedAt })
       .from(participants)
       .innerJoin(users, eq(participants.userId, users.id))
       .where(eq(participants.activityId, id));

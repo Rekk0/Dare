@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
@@ -15,7 +16,7 @@ import * as schema from "@/db/schema";
  *
  * 2. `DATABASE_URL` 为空 -> PGlite 落盘到 `.storage/pgdata`。
  *    **PGlite 是进程内单连接的，两个进程不能同时打开同一个 dataDir。**
- *    所以这个模式下 `pnpm dev` 和 `pnpm scheduler` 不能同时跑 ——
+ *    所以这个模式下 `pnpm dev` 和 `pnpm scheduler` 不能同时跑  - 
  *    scheduler 会因为拿不到文件锁而失败，或者(用内存库时)看到一个空库、
  *    永远扫到 0 个活动。
  *
@@ -37,7 +38,12 @@ async function connect(): Promise<Db> {
 
   // 落盘而不是纯内存：至少重启不丢数据。
   // 但仍然是单进程的，见上面的说明。
-  const client = new PGlite("./.storage/pgdata");
+  //
+  // 必须先递归建好父目录：PGlite 自己的 mkdir 不是递归的，
+  // 目录不存在时报 ENOENT 而不是自动创建。
+  const dataDir = "./.storage/pgdata";
+  mkdirSync(dataDir, { recursive: true });
+  const client = new PGlite(dataDir);
   const db = drizzlePglite(client, { schema });
   await ensureSchema(client);
   return db;

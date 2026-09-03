@@ -12,6 +12,7 @@ describe("scheduler 单轮扫描", () => {
     const result = await runSchedulerRound({
       findAdvanceable: async () => ["ok-1", "bad", "ok-2"],
       advanceActivity,
+      sweepEvidenceReports: async () => [],
       log: vi.fn(),
       error,
     }, new Date("2026-09-03T00:00:00.000Z"));
@@ -26,6 +27,7 @@ describe("scheduler 单轮扫描", () => {
     const result = await runSchedulerRound({
       findAdvanceable: async () => [],
       advanceActivity: vi.fn(),
+      sweepEvidenceReports: async () => [],
       log,
       error: vi.fn(),
     }, new Date("2026-09-03T00:00:00.000Z"));
@@ -41,10 +43,43 @@ describe("scheduler 单轮扫描", () => {
         if (activityId === "failed") throw new Error("推进失败");
         return { advanced: activityId === "advanced" };
       },
+      sweepEvidenceReports: async () => [],
       log: vi.fn(),
       error: vi.fn(),
     }, new Date("2026-09-03T00:00:00.000Z"));
 
     expect(result).toEqual({ scanned: 3, advanced: 1, failed: 1 });
+  });
+});
+
+describe("补跑证据评审", () => {
+  it("每轮都会补跑一次，并把补了几局记进日志", async () => {
+    // 评审只在 running -> voting 那一瞬间跑一次，
+    // 进程正好在中途重启的话，剩下的 assignment 永远没有报告
+    const log = vi.fn();
+    const sweepEvidenceReports = vi.fn().mockResolvedValue(["act-1", "act-2"]);
+    await runSchedulerRound({
+      findAdvanceable: async () => [],
+      advanceActivity: vi.fn(),
+      sweepEvidenceReports,
+      log,
+      error: vi.fn(),
+    }, new Date("2026-09-03T00:00:00.000Z"));
+
+    expect(sweepEvidenceReports).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls.some(([m]) => String(m).includes("补跑了 2 局"))).toBe(true);
+  });
+
+  it("没有要补的时候不写日志", async () => {
+    const log = vi.fn();
+    await runSchedulerRound({
+      findAdvanceable: async () => [],
+      advanceActivity: vi.fn(),
+      sweepEvidenceReports: async () => [],
+      log,
+      error: vi.fn(),
+    }, new Date("2026-09-03T00:00:00.000Z"));
+
+    expect(log.mock.calls.some(([m]) => String(m).includes("补跑"))).toBe(false);
   });
 });

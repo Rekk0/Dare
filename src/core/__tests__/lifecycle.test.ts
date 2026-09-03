@@ -9,6 +9,7 @@ import {
   NotEnoughPlayersError,
   nextTransition,
   validateSchedule,
+  validatePlayerRange,
   type ActivitySchedule,
 } from "../lifecycle";
 import type { ActivityStatus } from "../visibility";
@@ -17,6 +18,7 @@ const T = (iso: string) => new Date(iso);
 
 const sched = (status: ActivityStatus): ActivitySchedule => ({
   status,
+  taskDeadline: T("2026-09-05T19:30:00Z"),
   startAt: T("2026-09-05T20:00:00Z"),
   endAt: T("2026-09-05T23:00:00Z"),
   voteDeadline: T("2026-09-06T02:00:00Z"),
@@ -46,7 +48,7 @@ describe("nextTransition", () => {
     // 分配失败时活动停在 locked 可以重试，而不是卡在 recruiting 被反复触发
     expect(nextTransition(sched("locked"), BEFORE)).toMatchObject({
       kind: "advance",
-      to: "running",
+      to: "assigned",
       action: "assign",
     });
   });
@@ -85,7 +87,8 @@ describe("nextTransition", () => {
     }
     expect(steps).toEqual([
       "recruiting->locked:nothing",
-      "locked->running:assign",
+      "locked->assigned:assign",
+      "assigned->running:nothing",
       "running->voting:openVoting",
       "voting->settled:settle",
     ]);
@@ -194,5 +197,47 @@ describe("人数上限", () => {
 
   it("不足 3 人仍然拒绝", () => {
     expect(() => assertPlayerCount(roster(2))).toThrow(NotEnoughPlayersError);
+  });
+});
+
+describe("每局人数范围", () => {
+  it("3 到 21 的边界合法，越界和倒置拒绝", () => {
+    expect(validatePlayerRange(3, 21)).toEqual({ minPlayers: 3, maxPlayers: 21 });
+    expect(() => validatePlayerRange(2, 21)).toThrow();
+    expect(() => validatePlayerRange(3, 22)).toThrow();
+    expect(() => validatePlayerRange(8, 7)).toThrow();
+  });
+});
+
+describe("validateSchedule 对没填的时间", () => {
+  const now = new Date("2026-09-04T00:00:00Z");
+  const ok = {
+    taskDeadline: new Date("2026-09-04T01:00:00Z"),
+    startAt: new Date("2026-09-04T02:00:00Z"),
+    endAt: new Date("2026-09-04T04:00:00Z"),
+    voteDeadline: new Date("2026-09-04T05:00:00Z"),
+  };
+
+  it("正常的时间线没有问题", () => {
+    expect(validateSchedule(ok, now)).toEqual([]);
+  });
+
+  it("非法日期被挡下来，不会静默通过", () => {
+    // Invalid Date 参与比较全是 false，不显式挡的话空表单反而能过校验，
+    // 然后死在数据库那层，报出来的错跟时间没有关系
+    const problems = validateSchedule({ ...ok, startAt: new Date("") }, now);
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0].field).toBe("startAt");
+    expect(problems[0].message).toContain("开始时间");
+  });
+
+  it("几个时间都没填时一次全报出来", () => {
+    const problems = validateSchedule(
+      { ...ok, endAt: new Date(""), voteDeadline: new Date("乱填的") },
+      now,
+    );
+
+    expect(problems.map((p) => p.field).sort()).toEqual(["endAt", "voteDeadline"]);
   });
 });

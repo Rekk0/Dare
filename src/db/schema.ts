@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { DEFAULT_POLICY } from "@/core/review-policy";
 import {
   boolean,
   char,
@@ -53,10 +54,20 @@ export const activities = pgTable(
     sceneType: text("scene_type").notNull(),
     /** 自由文本，喂给 AI 做场景约束 */
     sceneDesc: text("scene_desc").notNull().default(""),
+    // 默认值只有 DEFAULT_POLICY 一个来源。写死数字的话，
+    // 放松下限时这里会被忘掉，然后新建的活动拿到一套旧标准
+    minFeasibility: integer("min_feasibility").notNull().default(DEFAULT_POLICY.minFeasibility),
+    minStealth: integer("min_stealth").notNull().default(DEFAULT_POLICY.minStealth),
+    minFun: integer("min_fun").notNull().default(DEFAULT_POLICY.minFun),
+    minVerifiability: integer("min_verifiability").notNull().default(DEFAULT_POLICY.minVerifiability),
+    edginess: integer("edginess").notNull().default(DEFAULT_POLICY.edginess),
 
+    taskDeadline: timestamp("task_deadline", { withTimezone: true }).notNull(),
     startAt: timestamp("start_at", { withTimezone: true }).notNull(),
     endAt: timestamp("end_at", { withTimezone: true }).notNull(),
     voteDeadline: timestamp("vote_deadline", { withTimezone: true }).notNull(),
+    minPlayers: integer("min_players").notNull().default(3),
+    maxPlayers: integer("max_players").notNull().default(21),
 
     /** 创建者定义 1 份是什么，如「一首歌点唱权」 */
     shareDesc: text("share_desc").notNull(),
@@ -80,7 +91,7 @@ export const activities = pgTable(
   (t) => [
     uniqueIndex("activities_code_uq").on(t.code),
     index("activities_status_idx").on(t.status),
-    check("activities_time_order", sql`${t.startAt} < ${t.endAt} AND ${t.endAt} < ${t.voteDeadline}`),
+    check("activities_time_order", sql`${t.taskDeadline} <= ${t.startAt} AND ${t.startAt} < ${t.endAt} AND ${t.endAt} < ${t.voteDeadline}`),
     check("activities_quota_positive", sql`${t.guessQuota} >= 0`),
   ],
 );
@@ -96,6 +107,7 @@ export const participants = pgTable(
       .notNull()
       .references(() => users.id),
     joinedAt: ts("joined_at"),
+    eliminatedAt: timestamp("eliminated_at", { withTimezone: true }),
   },
   (t) => [uniqueIndex("participants_activity_user_uq").on(t.activityId, t.userId)],
 );
@@ -181,7 +193,7 @@ export const aiReports = pgTable("ai_reports", {
   report: jsonb("report").notNull(),
   usage: jsonb("usage"),
   createdAt: created(),
-});
+}, (t) => [uniqueIndex("ai_reports_assignment_uq").on(t.assignmentId)]);
 
 export const guesses = pgTable(
   "guesses",

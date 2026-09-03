@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import type { AiProvider } from "../types";
+import { DEFAULT_POLICY, EDGINESS, type ReviewPolicy } from "@/core/review-policy";
 
 export interface TaskReviewInput {
   sceneType: string;
@@ -18,7 +19,7 @@ export const taskReviewSchema = z.object({
   verifiability: z.number().min(0).max(100),
   safety: z.enum(["ok", "warn", "block"]),
   // 建议性字段给默认值。模型经常省略空数组，对它们严格会在生产里
-  // 制造大量可避免的失败 —— 实测阿里百炼就漏了这两个。
+  // 制造大量可避免的失败 - 实测阿里百炼就漏了这两个。
   // 评分和 safety 不能这么放宽，那些是判定依据。
   reasons: z.array(z.string()).default([]),
   suggestions: z.array(z.string()).default([]),
@@ -26,8 +27,9 @@ export const taskReviewSchema = z.object({
 
 export type TaskReviewScores = z.infer<typeof taskReviewSchema>;
 
-export const TASK_REVIEW_FEASIBILITY_REVISE_THRESHOLD = 40;
-export const TASK_REVIEW_VERIFIABILITY_REVISE_THRESHOLD = 30;
+export const TASK_REVIEW_FEASIBILITY_REVISE_THRESHOLD = DEFAULT_POLICY.minFeasibility;
+export const TASK_REVIEW_STEALTH_REVISE_THRESHOLD = DEFAULT_POLICY.minStealth;
+export const TASK_REVIEW_VERIFIABILITY_REVISE_THRESHOLD = DEFAULT_POLICY.minVerifiability;
 
 export type TaskReviewVerdict = "accept" | "revise" | "reject";
 
@@ -40,8 +42,40 @@ export interface TaskReviewResult {
 /** 任务正文长度上限。超长的既烧 token，又多半是在灌注入载荷 */
 export const MAX_TASK_CONTENT_CHARS = 500;
 
-function systemPrompt(nonce: string): string {
+function systemPrompt(nonce: string, policy: ReviewPolicy): string {
+  const edginess = EDGINESS[policy.edginess];
   return `你是线下派对暗任务游戏的任务预审员。只输出符合指定 schema 的 JSON，不要输出 markdown、解释或 verdict 字段。
+
+本局的尺度设定是「${edginess.label}」：${edginess.desc}
+
+**你的角色是顾问，不是审查员。** 出题的自由留给玩家，你只负责打分和提醒，
+最终能不能上由攒局的人看着四个分数决定。**默认放行，给 safety=ok。**
+
+只有下面三类才判 safety=block，也就是你自己都不该生成的内容：
+
+1. 触犯法律的行为（盗窃、毁坏财物、吸毒等）
+2. 极端暴力，会造成严重人身伤害
+3. 色情内容或性骚扰
+
+**命中这三类里的任何一类，就必须给 block，不能因为「默认放行」而降成 warn。**
+反过来，**除此之外一律不判 block。** 下面这些都属于打分范畴，不是拒绝范畴：
+
+- 违反场所规定、可能被工作人员制止、不合公序良俗
+- 参与者之间自愿的轻度身体冲击，比如耳光、弹脑门、拍打
+- 任务不好隐蔽、容易被旁人看见 -> 压 stealth 分
+- 任务让人尴尬、不舒服、被起哄 -> 这正是这个游戏好玩的地方
+- 超出本局尺度设定 -> 给 safety=warn，在 reasons 里说清楚超在哪，但不要拒
+
+**只评估任务写了什么，不评估它可能会怎样。**
+不要推测执行过程中「可能发生」「有概率引发」「万一对方不配合」的情况。
+玩家自己会掌握分寸，风险你已经用四个分数表达完了，不用再在理由里演一遍。
+
+**关于「人」指的是谁：这局里的所有人都是自愿参加的**，他们知道有暗任务、自己也领了一道。
+任务里说「让一个人」「让某位异性」「让三个不同的人」时，**一律指本局参与者**。
+
+只有任务白纸黑字要求去找局外人时，也就是写了「陌生人」「路人」「服务员」「邻桌」
+「不认识的人」这类词，才给 safety=warn，并在 reasons 第一条写明这题会把
+没参加游戏的人卷进来。**没这么写就不要自己往那边想。**
 
 请根据活动场景、时长、人数和奖励，评估任务在这个具体场景中是否可完成、隐蔽、有趣、可留存图像、音频或视频证据，以及是否存在违法、伤害或越界骚扰的安全风险。
 
@@ -86,11 +120,12 @@ async function getTaskReviewProvider(): Promise<AiProvider> {
 
 export async function reviewTask(
   input: TaskReviewInput,
+  policy: ReviewPolicy = DEFAULT_POLICY,
   provider?: AiProvider,
 ): Promise<TaskReviewResult> {
   const nonce = randomBytes(8).toString("hex");
   const { data } = await (provider ?? (await getTaskReviewProvider())).complete({
-    system: systemPrompt(nonce),
+    system: systemPrompt(nonce, policy),
     parts: [{ type: "text", text: buildTaskPrompt(input, nonce) }],
     schema: taskReviewSchema,
     schemaHint:
@@ -108,8 +143,10 @@ export async function reviewTask(
   }
 
   if (
-    data.feasibility < TASK_REVIEW_FEASIBILITY_REVISE_THRESHOLD ||
-    data.verifiability < TASK_REVIEW_VERIFIABILITY_REVISE_THRESHOLD
+    data.feasibility < policy.minFeasibility ||
+    data.stealth < policy.minStealth ||
+    data.fun < policy.minFun ||
+    data.verifiability < policy.minVerifiability
   ) {
     return { scores: data, verdict: "revise", canForceSubmit: true };
   }

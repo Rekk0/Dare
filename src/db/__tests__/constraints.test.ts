@@ -23,9 +23,9 @@ async function seed(client: PGlite) {
   await client.exec(`
     INSERT INTO users (id, nickname, device_token_hash, recovery_code) VALUES
       ('u1','阿栗','h1','r1'), ('u2','老陈','h2','r2'), ('u3','豆子','h3','r3');
-    INSERT INTO activities (id, code, creator_id, title, scene_type, start_at, end_at, vote_deadline, share_desc)
+    INSERT INTO activities (id, code, creator_id, title, scene_type, task_deadline, start_at, end_at, vote_deadline, share_desc)
       VALUES ('act1','ABC123','u1','周五 KTV','ktv',
-              to_timestamp(${(now + 3600_000) / 1000}),
+              to_timestamp(${(now + 3600_000) / 1000}), to_timestamp(${(now + 3600_000) / 1000}),
               to_timestamp(${(now + 7200_000) / 1000}),
               to_timestamp(${(now + 10800_000) / 1000}),
               '一首歌点唱权');
@@ -186,9 +186,9 @@ describe("activities 的时间顺序约束", () => {
     const now = Date.now();
     await expect(
       client.exec(`
-        INSERT INTO activities (id, code, creator_id, title, scene_type, start_at, end_at, vote_deadline, share_desc)
+        INSERT INTO activities (id, code, creator_id, title, scene_type, task_deadline, start_at, end_at, vote_deadline, share_desc)
         VALUES ('act2','XYZ789','u1','坏活动','ktv',
-                to_timestamp(${(now + 7200_000) / 1000}),
+                to_timestamp(${(now + 7200_000) / 1000}), to_timestamp(${(now + 7200_000) / 1000}),
                 to_timestamp(${(now + 3600_000) / 1000}),
                 to_timestamp(${(now + 10800_000) / 1000}),
                 '奖励')

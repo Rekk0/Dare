@@ -59,3 +59,47 @@ describe("judgeGuess 的提示注入防护", () => {
     await expect(judgeGuess("任务", "猜测", invalid)).rejects.toThrow();
   });
 });
+
+describe("judgeGuess 的判定标尺", () => {
+  it("系统提示写死了人称差异不算差异", async () => {
+    // 任务正文对执行者说「你」，猜的人是旁观者只会说「他」，
+    // 不写这条模型就按字面打分，猜对了也给不到命中线，整个猜测机制失效
+    const provider = new MockProvider({ responses: [JSON.stringify({ similarity: 90, rationale: "对上了" })] });
+    await judgeGuess("让一个人主动跟你要微信", "让一个人主动跟他要微信", provider);
+    const system = provider.calls[0].system;
+
+    expect(system).toContain("两边的人称一定不一样，这不算差异");
+    expect(system).toContain("一律忽略，视为完全相同");
+  });
+
+  it("系统提示给了带分档的标尺，不是只说一句判相似度", async () => {
+    const provider = new MockProvider({ responses: [JSON.stringify({ similarity: 90, rationale: "对上了" })] });
+    await judgeGuess("题", "猜", provider);
+    const system = provider.calls[0].system;
+
+    // 命中线是 75。标尺要同时兜住两头：换个说法说对了能上 75，
+    // 只说对大类的必须压在 75 以下
+    expect(system).toContain("85 到 100");
+    expect(system).toContain("75 到 84");
+    expect(system).toContain("60 到 74");
+  });
+
+  it("系统提示要求猜测具体到能跟别的题区分开", async () => {
+    // 「让别人唱歌」能套在一堆唱歌类任务上，算猜中的话谁随口一说都能中
+    const provider = new MockProvider({ responses: [JSON.stringify({ similarity: 65, rationale: "只说对大类" })] });
+    await judgeGuess("题", "猜", provider);
+    const system = provider.calls[0].system;
+
+    expect(system).toContain("必须具体到不会同时套在另一道题上");
+    expect(system).toContain("只适用于措辞，不适用于内容");
+  });
+
+  it("系统提示钉死了核心动作对不上就不能给 60 分", async () => {
+    // 少了这条，模型会把「都发生在派对上」当成同一大类，
+    // 唱歌对喝酒也判接近
+    const provider = new MockProvider({ responses: [JSON.stringify({ similarity: 10, rationale: "动作不同" })] });
+    await judgeGuess("题", "猜", provider);
+
+    expect(provider.calls[0].system).toContain("核心动作对不上的，一律给 30 以下");
+  });
+});

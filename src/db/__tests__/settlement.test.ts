@@ -13,8 +13,8 @@ async function seed(spectators = 0) {
   const people = Array.from({ length: 4 + spectators }, (_, i) => `('p${i + 1}','act1','u${i + 1}')`).join(",");
   await client.exec(`
     INSERT INTO users (id, nickname, device_token_hash, recovery_code) VALUES ${users};
-    INSERT INTO activities (id, code, creator_id, title, scene_type, start_at, end_at, vote_deadline, share_desc, status)
-      VALUES ('act1','ABC123','u1','派对','ktv',to_timestamp(${now / 1000}),to_timestamp(${(now + 3600000) / 1000}),to_timestamp(${(now + 7200000) / 1000}),'一份','voting');
+    INSERT INTO activities (id, code, creator_id, title, scene_type, task_deadline, start_at, end_at, vote_deadline, share_desc, status)
+      VALUES ('act1','ABC123','u1','派对','ktv',to_timestamp(${now / 1000}), to_timestamp(${now / 1000}),to_timestamp(${(now + 3600000) / 1000}),to_timestamp(${(now + 7200000) / 1000}),'一份','voting');
     INSERT INTO participants (id, activity_id, user_id) VALUES ${people};
     INSERT INTO tasks (id, activity_id, author_pid, content, status) VALUES
       ('t1','act1','p1','任务一','accepted'), ('t2','act1','p2','任务二','accepted');
