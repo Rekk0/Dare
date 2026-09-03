@@ -1,7 +1,7 @@
 # Dare — 架构
 
-> 稳定参考文档。技术形状变了才改这里；进度和待办在 [PROGRESS.md](PROGRESS.md)。
-> 配套：[project-design.md](project-design.md)（产品与机制）、[DESIGN.md](DESIGN.md)（视觉）、[IMPLEMENT-PLAN.md](IMPLEMENT-PLAN.md)（里程碑）。
+> 稳定参考文档。技术形状变了才改这里。
+> 配套：[project-design.md](project-design.md)（产品与机制）。
 
 ---
 

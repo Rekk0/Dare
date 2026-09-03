@@ -47,3 +47,11 @@ next-env.d.ts
 /fonts/src/
 /cache/
 .storage/
+
+# corepack 缓存。pnpm 和 node-gyp 的二进制副本, 53MB, 生产环境不需要
+/.corepack/
+
+# 跟 agent 协作的文档和记录。只在本地留着, 不进远端仓库
+/agent_doc/
+/AGENTS.md
+/CLAUDE.md
