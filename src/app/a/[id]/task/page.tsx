@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import AiThinking from "@/components/AiThinking";
 
@@ -22,6 +22,13 @@ type Review = {
 
 const scoreLabels = { feasibility: "可完成", stealth: "隐蔽", fun: "好玩", verifiability: "可留证" } as const;
 
+/** 只给「你什么时候交的」用，精确到分钟就够 */
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "刚才";
+  return `${d.getMonth() + 1} 月 ${d.getDate()} 日 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export default function TaskPage() {
   const { id } = useParams<{ id: string }>();
   const [content, setContent] = useState("");
@@ -31,6 +38,21 @@ export default function TaskPage() {
   const [confirming, setConfirming] = useState(false);
   /** 上一次送去预审的原文。用来判断现在框里的字有没有被改过 */
   const [reviewedContent, setReviewedContent] = useState("");
+  /** 已经交过的那道题。一人一题，再交一次是覆盖，所以这里要预填出来 */
+  const [submittedAt, setSubmittedAt] = useState<string | null>(null);
+
+  // 不读已有的题的话，交过的人进来看到的是空白框，
+  // 以为自己在出第二道题，实际上一提交就把原来那道覆盖掉了
+  useEffect(() => {
+    fetch(`/api/activities/${id}/tasks`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { task: { content: string; updatedAt: string } | null } | null) => {
+        if (!d?.task) return;
+        setContent(d.task.content);
+        setSubmittedAt(d.task.updatedAt);
+      })
+      .catch(() => {});
+  }, [id]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -94,8 +116,17 @@ export default function TaskPage() {
   return (
     <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
       <a href={`/a/${id}`} className="text-[13px] text-dim">&lt; 回这一局</a>
-      <p className="mt-6 text-[12px] tracking-[.3em] text-mark">写一道题</p>
+      <p className="mt-6 text-[12px] tracking-[.3em] text-mark">
+        {submittedAt ? "改这道题" : "写一道题"}
+      </p>
       <h1 className="mt-3 text-3xl font-bold text-bright">让人做得到，<br />又不容易被猜到。</h1>
+      {submittedAt ? (
+        <p className="mt-4 text-[14px] leading-6 text-dim">
+          你在 {formatTime(submittedAt)} 交过一道题，下面是原文。
+          <br />
+          一人一题，再交一次会把它换掉。
+        </p>
+      ) : null}
 
       <form onSubmit={submit} className="mt-8 flex flex-1 flex-col">
         <textarea
@@ -153,7 +184,7 @@ export default function TaskPage() {
                 disabled={pending || confirming || stale}
                 className="min-h-14 rounded-full bg-mark text-[15px] font-bold text-ground disabled:bg-raised disabled:text-dim"
               >
-                {confirming ? "提交中" : "确认提交"}
+                {confirming ? "提交中" : submittedAt ? "换成这道" : "确认提交"}
               </button>
             </div>
           ) : (

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { reviewTask } from "@/ai/tasks/taskReview";
 import type { Edginess } from "@/core/review-policy";
@@ -31,6 +31,33 @@ const signingSecret = process.env.STORAGE_SIGNING_SECRET
  * 确认不重跑预审是刻意的：重跑既多花 2 到 5 秒，又可能因为模型的随机性
  * 给出跟用户刚看到的不一样的分数。
  */
+/**
+ * 我自己出的那道题。没交过返回 null。
+ *
+ * **只查 author_pid = 自己的那一行。** 不做「查出来再判断能不能看」，
+ * 查询条件本身就是保证，结构上不可能把别人的题带出去。
+ * 这条对应 visibility.ts 的「作者始终可见（是他自己写的）」，
+ * 但那里的 canSeeTaskContent 吃的是 AssignmentFacts，
+ * 而交题阶段还没分配，没有 assignment 可传，所以不套那个函数。
+ *
+ * 不返回 aiReview：界面用不上，少一个字段就少一条泄漏路径。
+ */
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const { pid } = await requireParticipant(id);
+
+    const mine = (await (await db)
+      .select({ content: tasks.content, status: tasks.status, updatedAt: tasks.updatedAt })
+      .from(tasks)
+      .where(and(eq(tasks.activityId, id), eq(tasks.authorPid, pid))))[0];
+
+    return Response.json({ task: mine ?? null });
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;

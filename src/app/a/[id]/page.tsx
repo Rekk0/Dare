@@ -40,7 +40,7 @@ const STATES: Record<Status, { text: string; next?: keyof Activity }> = {
  * 定义在组件外面：详情页每秒刷一次倒计时，定义在里面的话每次渲染
  * 都是一个新的组件类型，五个按钮会跟着每秒重新挂载一遍。
  */
-function Entry({ label, href, enabled, why }: { label: string; href: string; enabled: boolean; why: string }) {
+function Entry({ label, href, enabled, why, note }: { label: string; href: string; enabled: boolean; why: string; note?: string }) {
   return (
     <div>
       <a
@@ -52,7 +52,11 @@ function Entry({ label, href, enabled, why }: { label: string; href: string; ena
       >
         {label}
       </a>
-      {enabled ? null : <p className="mt-1 text-center text-[12px] text-dim">{why}</p>}
+      {enabled
+        ? note
+          ? <p className="mt-1 text-center text-[12px] text-dim">{note}</p>
+          : null
+        : <p className="mt-1 text-center text-[12px] text-dim">{why}</p>}
     </div>
   );
 }
@@ -64,12 +68,18 @@ export default function ActivityPage() {
   const [sharing, setSharing] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [copied, setCopied] = useState("");
+  /** 我交过题没有。一人一题，交过之后这个入口是「改题」不是再出一道 */
+  const [hasTask, setHasTask] = useState(false);
 
   useEffect(() => {
     fetch(`/api/activities/${id}`).then((r) => r.json()).then(setActivity).catch(() => undefined);
     fetch(`/api/activities/${id}/participants`)
       .then((r) => r.json())
       .then((data: { participants?: Participant[] }) => setParticipants(data.participants ?? []))
+      .catch(() => undefined);
+    fetch(`/api/activities/${id}/tasks`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { task: unknown } | null) => setHasTask(Boolean(data?.task)))
       .catch(() => undefined);
   }, [id]);
 
@@ -164,7 +174,13 @@ export default function ActivityPage() {
       </section>
 
       <section className="mt-8 grid gap-4">
-        <Entry label="出题" href={`/a/${id}/task`} enabled={is("recruiting")} why="交题截止后就锁死了" />
+        <Entry
+          label={hasTask ? "改题" : "出题"}
+          href={`/a/${id}/task`}
+          enabled={is("recruiting")}
+          why={hasTask ? "题已经交了，截止后锁死" : "交题截止后就锁死了"}
+          note={hasTask ? "已经交过一道，截止前还能改" : undefined}
+        />
         <Entry label="我的任务卡" href={`/a/${id}/card`} enabled={is("assigned", "running", "voting", "settled")} why="等交题截止后分配" />
         <Entry label="猜别人的任务" href={`/a/${id}/guess`} enabled={is("running")} why="开场后才能猜" />
         <Entry label="投票" href={`/a/${id}/vote`} enabled={is("voting", "settled")} why="活动结束后开投票" />
