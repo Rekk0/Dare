@@ -57,7 +57,7 @@ export default function MyActivitiesPage() {
         <div className="mt-8">
           <p className="text-[15px] leading-7 text-body">你还没加入任何活动。</p>
           <div className="mt-6 grid gap-3">
-            <a href="/new" className="flex min-h-12 items-center justify-center rounded-full bg-mark font-bold text-ground">攒一局</a>
+            <a href="/new" className="flex min-h-12 items-center justify-center rounded-full bg-mark font-bold text-ground">新建活动</a>
             <a href="/join" className="flex min-h-12 items-center justify-center rounded-full border border-line font-bold text-bright">输入邀请码</a>
           </div>
         </div>

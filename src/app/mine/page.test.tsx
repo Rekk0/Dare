@@ -84,7 +84,7 @@ describe("我参加的局", () => {
     render(<MyActivitiesPage />);
 
     expect(await screen.findByText("你还没加入任何活动。")).not.toBeNull();
-    expect(href("攒一局")).toBe("/new");
+    expect(href("新建活动")).toBe("/new");
     expect(href("输入邀请码")).toBe("/join");
   });
 

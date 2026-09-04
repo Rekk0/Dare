@@ -12,10 +12,14 @@ export default function Home() {
     <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
       <div className="flex flex-1 flex-col justify-center">
         <DareLogo className="w-full max-w-[300px]" />
-        <p className="mt-8 max-w-[22ch] text-[17px] leading-8 text-body">
+        {/* 不设 max-w：最长一句 13 个字，420px 的壳里放得下，
+            限宽反而会把一句话折成两行 */}
+        <p className="mt-8 text-[17px] leading-8 text-body">
           发布秘密任务，悄悄完成任务
           <br />
-          完成任务领取奖励，破解别人任务夺取奖励。
+          完成任务，领取奖励
+          <br />
+          破解别人任务，夺取奖励
         </p>
       </div>
 

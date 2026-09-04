@@ -176,7 +176,7 @@ export default function ShareResultCard({ data, onClose }: { data: ShareCardData
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="分享我的战果"
+      aria-label="分享我的行动报告"
       onClick={onClose}
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 overflow-y-auto bg-ground/95 p-4"
     >

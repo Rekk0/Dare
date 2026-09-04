@@ -66,7 +66,7 @@ describe("结算页", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "分享我的行动报告" }));
 
-    expect(screen.getByRole("dialog", { name: "分享我的战果" })).not.toBeNull();
+    expect(screen.getByRole("dialog", { name: "分享我的行动报告" })).not.toBeNull();
     expect(screen.getByText("长按图片保存到相册")).not.toBeNull();
   });
 
