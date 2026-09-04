@@ -335,15 +335,20 @@ export async function performAssignment(db: Db, activityId: string, now: Date): 
 
 /** scheduler 的一轮：找出所有可能需要推进的活动 */
 export async function findAdvanceable(db: Db, now: Date = new Date()): Promise<string[]> {
+  // 原始 sql 模板里 drizzle 拿不到列类型，裸 Date 会原样透传给驱动。
+  // PGlite 吃得下，postgres-js 吃不下（Received an instance of Date），
+  // 于是这个 bug 只在真 Postgres 上炸，测试全绿也发现不了。
+  // 转成 ISO 串再显式转型，两个驱动都认。
+  const at = sql`${now.toISOString()}::timestamptz`;
   const rows = await db
     .select({ id: activities.id })
     .from(activities)
     .where(
       sql`${activities.status} = 'locked'
-        OR (${activities.status} = 'recruiting' AND ${activities.taskDeadline} <= ${now})
-        OR (${activities.status} = 'assigned' AND ${activities.startAt} <= ${now})
-        OR (${activities.status} = 'running'    AND ${activities.endAt} <= ${now})
-        OR (${activities.status} = 'voting'     AND ${activities.voteDeadline} <= ${now})`,
+        OR (${activities.status} = 'recruiting' AND ${activities.taskDeadline} <= ${at})
+        OR (${activities.status} = 'assigned' AND ${activities.startAt} <= ${at})
+        OR (${activities.status} = 'running'    AND ${activities.endAt} <= ${at})
+        OR (${activities.status} = 'voting'     AND ${activities.voteDeadline} <= ${at})`,
     );
   return rows.map((r) => r.id);
 }
