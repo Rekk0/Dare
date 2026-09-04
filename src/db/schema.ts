@@ -106,6 +106,13 @@ export const participants = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id),
+    /**
+     * 这一局里用的名字。可空，为空时回落到 users.nickname。
+     *
+     * 昵称本来只存在 users 上，是设备级的，改一次名字所有局里都跟着变。
+     * 名单读的是 coalesce(participants.nickname, users.nickname)。
+     */
+    nickname: text("nickname"),
     joinedAt: ts("joined_at"),
     eliminatedAt: timestamp("eliminated_at", { withTimezone: true }),
   },

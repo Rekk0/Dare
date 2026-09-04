@@ -91,6 +91,7 @@ CREATE TABLE participants (
   id text PRIMARY KEY,
   activity_id text NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
   user_id text NOT NULL REFERENCES users(id),
+  nickname text,
   joined_at timestamptz NOT NULL DEFAULT now()
   ,eliminated_at timestamptz
 );

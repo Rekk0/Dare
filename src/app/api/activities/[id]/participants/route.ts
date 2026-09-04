@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { apiError } from "@/lib/api";
 import { db } from "@/lib/db";
 import { participants, users } from "@/db/schema";
@@ -24,7 +24,12 @@ export async function GET(
     const { pid } = await requireParticipant(id);
 
     const rows = await (await db)
-      .select({ pid: participants.id, nickname: users.nickname, eliminatedAt: participants.eliminatedAt })
+      // 这一局设过名字就用这一局的，没设过回落到设备上的默认名
+      .select({
+        pid: participants.id,
+        nickname: sql<string>`coalesce(${participants.nickname}, ${users.nickname})`,
+        eliminatedAt: participants.eliminatedAt,
+      })
       .from(participants)
       .innerJoin(users, eq(participants.userId, users.id))
       .where(eq(participants.activityId, id));
@@ -33,6 +38,37 @@ export async function GET(
       me: pid,
       participants: rows,
     });
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+/**
+ * 改自己在这一局里的名字。
+ *
+ * 只能改自己那一行：pid 来自 requireParticipant，不从请求体里取，
+ * 否则谁都能改别人的名字。
+ *
+ * 创建者建完局走这里，参与者填邀请码时在加入接口里一并设置。
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+    const { userId, pid } = await requireParticipant(id);
+
+    const body = await request.json().catch(() => ({}));
+    const nickname = String(body.nickname ?? "").trim().slice(0, 20);
+    if (!nickname) throw new Error("留个名字，大家好认你");
+
+    const client = await db;
+    await client.update(participants).set({ nickname }).where(eq(participants.id, pid));
+    // users 上那份是设备级默认名，下次进别的局时用它兜底
+    await client.update(users).set({ nickname }).where(eq(users.id, userId));
+
+    return Response.json({ nickname });
   } catch (error) {
     return apiError(error);
   }

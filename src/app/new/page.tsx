@@ -68,7 +68,9 @@ export default function NewActivityPage() {
       return setError("没建成，再试一次。");
     }
     const data = (await response.json()) as { id: string };
-    window.location.href = `/a/${data.id}`;
+    // 先去起名字。不走这一步的话创建者在名单上一直是 `玩家1234`，
+    // 参与者填邀请码时留过名，创建者本来没有这个机会
+    window.location.href = `/a/${data.id}/nickname`;
   }
 
   /** AI 只是把表单填上默认值，填完创建者照样能改 */

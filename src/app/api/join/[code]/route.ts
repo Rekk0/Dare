@@ -42,14 +42,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
 
     // 昵称必须落库。之前只存在 sessionStorage 里，谁也读不到 -
     // 用户填了名字，别人在名单和投票页看到的还是「玩家1234」
+    //
+    // 同时写两处：users 上那份是设备级默认名，下次进别的局时用它兜底；
+    // participants 上那份只管这一局，改它不会波及已经参加过的其它局。
     if (nickname) {
       await client.update(users).set({ nickname }).where(eq(users.id, userId));
     }
 
     await client
       .insert(participants)
-      .values({ id: nanoid(), activityId: activity.id, userId })
+      .values({ id: nanoid(), activityId: activity.id, userId, nickname: nickname || null })
       .onConflictDoNothing();
+
+    // 已经在局里的人重新填名字时，上面的插入不生效，得单独更新
+    if (nickname) {
+      await client
+        .update(participants)
+        .set({ nickname })
+        .where(and(eq(participants.activityId, activity.id), eq(participants.userId, userId)));
+    }
     return Response.json({ activityId: activity.id });
   } catch (error) {
     return apiError(error);
