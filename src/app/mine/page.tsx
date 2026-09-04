@@ -49,13 +49,13 @@ export default function MyActivitiesPage() {
   return (
     <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
       <a href="/" className="text-[13px] text-dim">&lt; 回首页</a>
-      <h1 className="mt-6 text-3xl font-bold text-bright">我参加的局</h1>
+      <h1 className="mt-6 text-3xl font-bold text-bright">我的活动</h1>
 
       {rows === null ? (
-        <p className="mt-8 text-dim">正在找你的局。</p>
+        <p className="mt-8 text-dim">正在寻找你的活动。</p>
       ) : rows.length === 0 ? (
         <div className="mt-8">
-          <p className="text-[15px] leading-7 text-body">你还没进过任何一局。</p>
+          <p className="text-[15px] leading-7 text-body">你还没加入任何活动。</p>
           <div className="mt-6 grid gap-3">
             <a href="/new" className="flex min-h-12 items-center justify-center rounded-full bg-mark font-bold text-ground">攒一局</a>
             <a href="/join" className="flex min-h-12 items-center justify-center rounded-full border border-line font-bold text-bright">输入邀请码</a>
@@ -66,7 +66,7 @@ export default function MyActivitiesPage() {
           {live.map((row) => <Card key={row.id} row={row} />)}
           {done.length ? (
             <>
-              <p className="mt-4 text-[12px] tracking-[.2em] text-dim">已经结了的</p>
+              <p className="mt-4 text-[12px] tracking-[.2em] text-dim">已经结束</p>
               {done.map((row) => <Card key={row.id} row={row} />)}
             </>
           ) : null}

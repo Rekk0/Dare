@@ -33,9 +33,9 @@ const href = (name: string) => screen.getByRole("link", { name }).getAttribute("
 describe("落地页", () => {
   it("三条路都在，指向对的地方", () => {
     render(<Home />);
-    expect(href("攒一局")).toBe("/new");
+    expect(href("新建活动")).toBe("/new");
     expect(href("输入邀请码")).toBe("/join");
-    expect(href("我参加的局")).toBe("/mine");
+    expect(href("我的活动")).toBe("/mine");
   });
 
   it("标识用的是路径不是文字，换设备不会掉字", () => {
@@ -65,10 +65,10 @@ describe("我参加的局", () => {
     render(<MyActivitiesPage />);
 
     await screen.findByText("在跑的");
-    expect(screen.getByText("已经结了的")).not.toBeNull();
+    expect(screen.getByText("已经结束")).not.toBeNull();
     // 在跑的排在分组标题前面
     const body = document.body.textContent ?? "";
-    expect(body.indexOf("在跑的")).toBeLessThan(body.indexOf("已经结了的"));
+    expect(body.indexOf("在跑的")).toBeLessThan(body.indexOf("已经结束"));
   });
 
   it("出局的局也列出来，但标明原因", async () => {
@@ -83,7 +83,7 @@ describe("我参加的局", () => {
     stub([]);
     render(<MyActivitiesPage />);
 
-    expect(await screen.findByText("你还没进过任何一局。")).not.toBeNull();
+    expect(await screen.findByText("你还没加入任何活动。")).not.toBeNull();
     expect(href("攒一局")).toBe("/new");
     expect(href("输入邀请码")).toBe("/join");
   });
@@ -92,6 +92,6 @@ describe("我参加的局", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("网络挂了")));
     render(<MyActivitiesPage />);
 
-    expect(await screen.findByText("你还没进过任何一局。")).not.toBeNull();
+    expect(await screen.findByText("你还没加入任何活动。")).not.toBeNull();
   });
 });

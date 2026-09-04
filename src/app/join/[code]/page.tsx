@@ -29,13 +29,13 @@ export default function JoinPage() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    if (!nickname.trim()) return setError("留个名字，大家好认你。");
+    if (!nickname.trim()) return setError("留下一个昵称，方便大家辨认。");
     const response = await fetch(`/api/join/${encodeURIComponent(code)}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ nickname: nickname.trim() }),
     });
-    if (!response.ok) return setError("邀请码不对，或者这局没了。");
+    if (!response.ok) return setError("邀请码不对，或者活动没了。");
     const data = (await response.json()) as { activityId: string };
     window.location.href = `/a/${data.activityId}`;
   }
@@ -46,7 +46,7 @@ export default function JoinPage() {
     return (
       <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
         <p className="text-[12px] tracking-[.3em] text-mark">邀请码 {upper}</p>
-        <p className="mt-8 text-dim">正在找这一局。</p>
+        <p className="mt-8 text-dim">正在寻找对应活动。</p>
       </main>
     );
   }
@@ -56,10 +56,10 @@ export default function JoinPage() {
       <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
         <a href="/join" className="text-[13px] text-dim">&lt; 换一个码</a>
         <p className="mt-6 text-[12px] tracking-[.3em] text-mark">邀请码 {upper}</p>
-        <h1 className="mt-4 text-3xl font-bold text-bright">没这一局。</h1>
-        <p className="mt-4 text-[15px] leading-7 text-body">码填错了，或者这局已经被清掉了。</p>
+        <h1 className="mt-4 text-3xl font-bold text-bright">没有对应的活动。</h1>
+        <p className="mt-4 text-[15px] leading-7 text-body">码填错了，或者这活动已经失效了。</p>
         <a href="/join" className="mt-auto flex min-h-14 items-center justify-center rounded-full bg-mark text-[16px] font-bold text-ground">
-          重新填码
+          重新填写
         </a>
       </main>
     );
@@ -70,20 +70,20 @@ export default function JoinPage() {
       <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
         <a href="/" className="text-[13px] text-dim">&lt; 回首页</a>
         <p className="mt-6 text-[12px] tracking-[.3em] text-mark">邀请码 {upper}</p>
-        <h1 className="mt-4 text-3xl font-bold text-bright">你已经在这一局里了。</h1>
+        <h1 className="mt-4 text-3xl font-bold text-bright">你已经在这个活动里了。</h1>
         <p className="mt-4 text-[15px] leading-7 text-body">{lookup.title}</p>
         <div className="mt-auto grid gap-3">
           <a
             href={`/a/${lookup.activityId}`}
             className="flex min-h-14 items-center justify-center rounded-full bg-mark text-[16px] font-bold text-ground"
           >
-            去这一局
+            进入活动
           </a>
           <a
             href="/mine"
             className="flex min-h-14 items-center justify-center rounded-full border border-line text-[16px] font-bold text-bright"
           >
-            看我参加的所有局
+            查看我的活动
           </a>
         </div>
       </main>
@@ -95,9 +95,9 @@ export default function JoinPage() {
       <a href="/join" className="text-[13px] text-dim">&lt; 换一个码</a>
       <p className="mt-6 text-[12px] tracking-[.3em] text-mark">邀请码 {upper}</p>
       <h1 className="mt-4 text-3xl font-bold text-bright">
-        进这局前，
+        填写你的昵称，仅在本局使用
         <br />
-        留个名字。
+        方便其他人辨识。
       </h1>
       <p className="mt-4 text-[15px] text-dim">{lookup.title}</p>
 

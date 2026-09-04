@@ -13,9 +13,9 @@ export default function Home() {
       <div className="flex flex-1 flex-col justify-center">
         <DareLogo className="w-full max-w-[300px]" />
         <p className="mt-8 max-w-[22ch] text-[17px] leading-8 text-body">
-          给朋友留一道暗任务。
+          发布秘密任务，悄悄完成任务
           <br />
-          做成了拿走一份，被猜中就归零。
+          完成任务领取奖励，破解别人任务夺取奖励。
         </p>
       </div>
 
@@ -24,7 +24,7 @@ export default function Home() {
           href="/new"
           className="flex min-h-14 items-center justify-center rounded-full bg-mark text-[16px] font-bold text-ground"
         >
-          攒一局
+          新建活动
         </a>
         <a
           href="/join"
@@ -36,7 +36,7 @@ export default function Home() {
           href="/mine"
           className="flex min-h-14 items-center justify-center rounded-full border border-line text-[16px] font-bold text-bright"
         >
-          我参加的局
+          我的活动
         </a>
       </nav>
     </main>

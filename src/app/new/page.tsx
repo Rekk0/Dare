@@ -26,15 +26,15 @@ function Threshold({ label, value, onChange }: { label: string; value: number; o
 export default function NewActivityPage() {
   const [error, setError] = useState("");
   const [problems, setProblems] = useState<{ field: string; message: string }[]>([]);
-  const [title, setTitle] = useState("今晚的暗任务");
-  const [sceneDesc, setSceneDesc] = useState("线下派对");
+  const [title, setTitle] = useState("例：小明和朋友们的KTV派对");
+  const [sceneDesc, setSceneDesc] = useState("例：小明和三两好友的KTV欢唱");
   const [minFeasibility, setMinFeasibility] = useState(DEFAULT_POLICY.minFeasibility);
   const [minStealth, setMinStealth] = useState(DEFAULT_POLICY.minStealth);
   const [minFun, setMinFun] = useState(DEFAULT_POLICY.minFun);
   const [minVerifiability, setMinVerifiability] = useState(DEFAULT_POLICY.minVerifiability);
   const [minPlayers, setMinPlayers] = useState(3);
   const [maxPlayers, setMaxPlayers] = useState(21);
-  const [shareDesc, setShareDesc] = useState("一份");
+  const [shareDesc, setShareDesc] = useState("例：十个金币");
   const [times, setTimes] = useState(() => { const n = Date.now(); const local = (ms: number) => new Date(n + ms - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16); return { taskDeadline: local(30 * 60_000), startAt: local(60 * 60_000), endAt: local(180 * 60_000), voteDeadline: local(240 * 60_000) }; });
   const [edginess, setEdginess] = useState<Edginess>(DEFAULT_POLICY.edginess);
   const [reason, setReason] = useState("");
@@ -99,7 +99,7 @@ export default function NewActivityPage() {
       setEdginess(data.edginess);
       setReason(data.reason);
     } catch {
-      setError("AI 这次没接上，自己定也行。");
+      setError("AI 未能响应，自己定也行。");
     } finally {
       setSuggesting(false);
     }
@@ -108,12 +108,12 @@ export default function NewActivityPage() {
   return (
     <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
       <a href="/" className="text-[13px] text-dim">&lt; 回首页</a>
-      <h1 className="mt-6 text-3xl font-bold text-bright">攒一局</h1>
-      <p className="mt-3 text-[15px] leading-7 text-body">定好规矩，把邀请码发出去。</p>
+      <h1 className="mt-6 text-3xl font-bold text-bright">新建活动</h1>
+      <p className="mt-3 text-[15px] leading-7 text-body">敲定活动详情。</p>
 
       <section className="mt-8 space-y-4 rounded-2xl border border-line bg-surface p-4">
         <label className="block text-[13px] text-dim">
-          这局叫啥
+          活动名称
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -122,7 +122,7 @@ export default function NewActivityPage() {
         </label>
 
         <label className="block text-[13px] text-dim">
-          这是个什么局
+          这是个什么样的活动
           <textarea
             value={sceneDesc}
             onChange={(e) => setSceneDesc(e.target.value)}
@@ -154,7 +154,7 @@ export default function NewActivityPage() {
 
         <div className="grid grid-cols-2 gap-3"><label className="text-[13px] text-dim">人数下限<input type="number" min="3" max="21" value={minPlayers} onChange={(e) => setMinPlayers(Number(e.target.value))} className="mt-2 min-h-11 w-full rounded-xl border border-line bg-ground px-3 text-bright" /></label><label className="text-[13px] text-dim">人数上限<input type="number" min="3" max="21" value={maxPlayers} onChange={(e) => setMaxPlayers(Number(e.target.value))} className="mt-2 min-h-11 w-full rounded-xl border border-line bg-ground px-3 text-bright" /></label></div>
         <label className="block text-[13px] text-dim">每份奖励是什么<input value={shareDesc} onChange={(e) => setShareDesc(e.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-line bg-ground px-3 text-bright" /></label>
-        {([ ["taskDeadline", "最晚交题时间"], ["startAt", "开始时间"], ["endAt", "结束时间"], ["voteDeadline", "投票截止"] ] as const).map(([key, label]) => <label key={key} className="block text-[13px] text-dim">{label}<input type="datetime-local" value={times[key]} onChange={(e) => setTimes({ ...times, [key]: e.target.value })} className="mt-2 min-h-11 w-full rounded-xl border border-line bg-ground px-3 text-bright" /></label>)}
+        {([ ["taskDeadline", "最晚出题时间"], ["startAt", "开始时间"], ["endAt", "结束时间"], ["voteDeadline", "投票截止"] ] as const).map(([key, label]) => <label key={key} className="block text-[13px] text-dim">{label}<input type="datetime-local" value={times[key]} onChange={(e) => setTimes({ ...times, [key]: e.target.value })} className="mt-2 min-h-11 w-full rounded-xl border border-line bg-ground px-3 text-bright" /></label>)}
 
         <button
           type="button"

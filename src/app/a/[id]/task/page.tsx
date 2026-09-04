@@ -68,7 +68,7 @@ export default function TaskPage() {
       });
     } catch {
       setPending(false);
-      return setError("连不上服务器。检查网络，关掉 VPN 再试。");
+      return setError("连不上服务器，检查网络再试。");
     }
     setPending(false);
     if (!response.ok) {
@@ -76,7 +76,7 @@ export default function TaskPage() {
       // 三种情况显示同一句话的话，排查时完全没有方向。
       if (response.status === 403) return setError("你的身份没认出来。回首页重新用邀请码进一次。");
       if (response.status === 404) return setError("这局不在了。检查邀请码。");
-      return setError(`没送进去（${response.status}）。再试一次。`);
+      return setError(`数据上传失败（${response.status}）。再试一次。`);
     }
     setReview((await response.json()) as Review);
     setReviewedContent(content);
@@ -96,11 +96,11 @@ export default function TaskPage() {
       });
     } catch {
       setConfirming(false);
-      return setError("连不上服务器。检查网络，关掉 VPN 再试。");
+      return setError("连不上服务器，检查网络再试。");
     }
     if (!response.ok) {
       setConfirming(false);
-      return setError("没交上去。重新预审一次再试。");
+      return setError("上传失败。重新预审一次再试。");
     }
     window.location.href = `/a/${id}`;
   }
@@ -115,11 +115,11 @@ export default function TaskPage() {
 
   return (
     <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
-      <a href={`/a/${id}`} className="text-[13px] text-dim">&lt; 回这一局</a>
+      <a href={`/a/${id}`} className="text-[13px] text-dim">&lt; 返回活动页</a>
       <p className="mt-6 text-[12px] tracking-[.3em] text-mark">
         {submittedAt ? "改这道题" : "写一道题"}
       </p>
-      <h1 className="mt-3 text-3xl font-bold text-bright">让人做得到，<br />又不容易被猜到。</h1>
+      <h1 className="mt-3 text-3xl font-bold text-bright">发布一个秘密任务，<br />AI会帮你把关。</h1>
       {submittedAt ? (
         <p className="mt-4 text-[14px] leading-6 text-dim">
           你在 {formatTime(submittedAt)} 交过一道题，下面是原文。
@@ -133,14 +133,14 @@ export default function TaskPage() {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           maxLength={500}
-          placeholder="比如：想办法让左边的人主动说出一个动物名"
+          placeholder="比如：想办法让左边的人在半小时内说出三个不同的动物名"
           className="min-h-40 w-full rounded-xl border border-line bg-surface p-4 leading-7 text-bright outline-none focus:border-mark"
         />
 
         {review && !stale ? (
           <section className="mt-5 rounded-2xl border border-line bg-surface p-4">
             <p className={blocked ? "font-bold text-alarm" : "font-bold text-mark"}>
-              {blocked ? "这题不行" : review.verdict === "revise" ? "能玩，但该改改" : "这题能上"}
+              {blocked ? "这任务不行" : review.verdict === "revise" ? "能玩，但可以再改改" : "这任务能行"}
             </p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               {Object.entries(scoreLabels).map(([key, label]) => (
@@ -159,10 +159,10 @@ export default function TaskPage() {
             ) : null}
             {warned ? (
               <p className="mt-4 border-l-2 border-alarm pl-3 text-[14px] leading-6 text-body">
-                {review.scores.reasons[0] ?? "这题有点越界，自己掂量。"}
+                {review.scores.reasons[0] ?? "这题有点越界，你再掂量掂量？"}
               </p>
             ) : null}
-            {blocked ? <p className="mt-4 text-[14px] text-body">换个题。这里不给绕过。</p> : null}
+            {blocked ? <p className="mt-4 text-[14px] text-body">换个题，你这么整容易踩雷了。</p> : null}
           </section>
         ) : null}
 
@@ -197,7 +197,7 @@ export default function TaskPage() {
           )}
           {pending ? (
             <div className="mt-4">
-              <AiThinking label="AI 正在读这道题，几秒就好" />
+              <AiThinking label="AI 正在分析任务内容，几秒就好" />
             </div>
           ) : null}
           {stale && !pending ? (

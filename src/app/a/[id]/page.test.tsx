@@ -92,7 +92,7 @@ describe("活动详情页", () => {
       expect(await screen.findByText(label)).not.toBeNull();
     }
     expect(screen.getByText("等交题截止后分配")).not.toBeNull();
-    expect(screen.getByText("开场后才能猜")).not.toBeNull();
+    expect(screen.getByText("活动开始后才能猜")).not.toBeNull();
   });
 
   it("出局的人看到原因，所有入口都点不了", async () => {
@@ -110,7 +110,7 @@ describe("活动详情页", () => {
   it("settled 不显示倒计时，其余状态显示", async () => {
     stubActivity({ status: "settled" });
     const { unmount } = render(<ActivityPage />);
-    await screen.findByText("这一局结了");
+    await screen.findByText("活动已经结算");
     expect(screen.queryByText(/离下个节点/)).toBeNull();
     unmount();
 

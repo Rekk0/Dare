@@ -56,15 +56,15 @@ describe("结算页", () => {
     // 等卡片播出来之后，份额仍然排在它前面
     await screen.findByText("出题人：出题人小张");
     const body = document.body.textContent ?? "";
-    expect(body.indexOf("你的份额")).toBeLessThan(body.indexOf("出题人："));
+    expect(body.indexOf("你的奖励份额")).toBeLessThan(body.indexOf("出题人："));
   });
 
-  it("点分享我的战果，弹出可长按保存的图", async () => {
+  it("点分享我的行动报告，弹出可长按保存的图", async () => {
     stub();
     render(<ResultPage />);
     await screen.findByText("1.500");
 
-    fireEvent.click(screen.getByRole("button", { name: "分享我的战果" }));
+    fireEvent.click(screen.getByRole("button", { name: "分享我的行动报告" }));
 
     expect(screen.getByRole("dialog", { name: "分享我的战果" })).not.toBeNull();
     expect(screen.getByText("长按图片保存到相册")).not.toBeNull();
@@ -75,6 +75,6 @@ describe("结算页", () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => undefined)));
     render(<ResultPage />);
 
-    expect((screen.getByRole("button", { name: "分享我的战果" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "分享我的行动报告" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

@@ -6,7 +6,7 @@ import GuessResult from "@/components/GuessResult";
 afterEach(cleanup);
 
 describe("GuessResult", () => {
-  it.each([["hit", "猜中了"], ["close", "很接近"], ["cold", "不是这个"]] as const)("%s 档显示对应文案", (outcome, copy) => {
+  it.each([["hit", "成功识破！"], ["close", "已经接近了"], ["cold", "不是这个"]] as const)("%s 档显示对应文案", (outcome, copy) => {
     render(<GuessResult outcome={outcome} quotaLeft={2} />);
     expect(screen.getByText(copy)).not.toBeNull();
   });

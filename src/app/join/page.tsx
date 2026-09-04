@@ -24,9 +24,9 @@ export default function JoinCodePage() {
     <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
       <a href="/" className="text-[13px] text-dim">&lt; 回首页</a>
       <h1 className="mt-6 text-3xl font-bold text-bright">
-        谁给你的码，
+        在下方输入邀请码
         <br />
-        填这儿。
+        和朋友们一起执行任务。
       </h1>
 
       <form onSubmit={submit} className="mt-auto pb-4">
@@ -41,7 +41,7 @@ export default function JoinCodePage() {
           className="min-h-16 w-full rounded-xl border border-line bg-surface px-4 text-center text-3xl font-bold uppercase tracking-[.28em] tabular-nums text-bright outline-none placeholder:text-[16px] placeholder:font-normal placeholder:tracking-normal placeholder:text-dim focus:border-mark"
         />
         <button className="mt-4 min-h-14 w-full rounded-full bg-mark text-[16px] font-bold text-ground">
-          进这一局
+          加入活动
         </button>
         {error ? <p role="alert" className="mt-3 text-[13px] text-alarm">{error}</p> : null}
       </form>

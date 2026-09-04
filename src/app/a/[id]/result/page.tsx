@@ -76,27 +76,27 @@ export default function ResultPage() {
   return (
     <main className="mx-auto min-h-[100dvh] max-w-[420px] px-5 py-8">
       <div className="flex items-center justify-between gap-3">
-        <a href={`/a/${id}`} className="text-[13px] text-dim">&lt; 回这一局</a>
+        <a href={`/a/${id}`} className="text-[13px] text-dim">&lt; 回到活动页</a>
         <button
           type="button"
           onClick={() => setSharing(true)}
           disabled={!shareData}
           className="min-h-9 rounded-full border border-mark px-3 text-[13px] font-bold text-mark disabled:opacity-40"
         >
-          分享我的战果
+          分享我的行动报告
         </button>
       </div>
 
-      <p className="mt-6 text-[12px] tracking-[.3em] text-mark">结算</p>
-      <h1 className="mt-3 text-3xl font-bold text-bright">这一局，到账。</h1>
+      <p className="mt-6 text-[12px] tracking-[.3em] text-mark">任务结算</p>
+      <h1 className="mt-3 text-3xl font-bold text-bright">任务结束，奖励到账。</h1>
 
       {/* 自己的份额放最上面：打开结果页第一眼要看的就是这个，
           压在一串任务卡后面等 450ms 一条地播完才出现，节奏是反的 */}
       <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
-        <p className="text-[13px] text-dim">你的份额</p>
+        <p className="text-[13px] text-dim">你的奖励份额</p>
         <p className="mt-2 text-5xl font-display tabular-nums text-gain">{mine ? mine.totalShares : 0}</p>
         <p className="mt-4 text-[14px] text-body">
-          任务 {mine?.taskShares ?? 0} / 猜中 {mine?.bountyShares ?? 0}
+          任务完成奖励 {mine?.taskShares ?? 0} / 识破任务奖励 {mine?.bountyShares ?? 0}
         </p>
       </section>
 

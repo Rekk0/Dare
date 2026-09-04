@@ -48,7 +48,7 @@ export default function CardPage() {
   return (
     <main className="mx-auto min-h-[100dvh] max-w-[420px] px-5 py-8">
       <a href={`/a/${id}`} className="text-[13px] text-dim">&lt; 回这一局</a>
-      <h1 className="mt-6 text-3xl font-bold text-bright">我的任务卡</h1>
+      <h1 className="mt-6 text-3xl font-bold text-bright">任务卡</h1>
       {assignment && endAt ? (
         <div className="mt-8">
           <TaskCard

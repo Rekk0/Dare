@@ -60,7 +60,7 @@ describe("出题页", () => {
   it("每个界面都有回这一局的入口", async () => {
     // 五个子页面原来一个返回入口都没有，进去只能靠浏览器后退
     render(<TaskPage />);
-    expect(screen.getByRole("link", { name: "< 回这一局" }).getAttribute("href")).toBe("/a/activity-1");
+    expect(screen.getByRole("link", { name: "< 返回活动页" }).getAttribute("href")).toBe("/a/activity-1");
   });
 
   it("改了题就不能直接确认，评分也一起收起来", async () => {
@@ -80,7 +80,7 @@ describe("出题页", () => {
     stubFetch({ verdict: "reject", canForceSubmit: false, scores: { feasibility: 0, stealth: 0, fun: 0, verifiability: 0, safety: "block", reasons: [], suggestions: [] } });
     await preview("危险题");
 
-    expect(await screen.findByText("这题不行")).not.toBeNull();
+    expect(await screen.findByText("这任务不行")).not.toBeNull();
     expect((screen.getByRole("button", { name: "提交并预审" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("button", { name: "确认提交" })).toBeNull();
   });

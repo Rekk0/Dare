@@ -76,7 +76,7 @@ function draw(canvas: HTMLCanvasElement, data: ShareCardData): void {
   // 份额是这张图的主角
   ctx.fillStyle = DIM;
   ctx.font = font(30, "500");
-  ctx.fillText("我这一局拿到", 80, y);
+  ctx.fillText("我在本次任务拿到", 80, y);
   y += 130;
   ctx.fillStyle = GAIN;
   ctx.font = font(150);
@@ -123,7 +123,7 @@ function draw(canvas: HTMLCanvasElement, data: ShareCardData): void {
     lines.forEach((line, i) => ctx.fillText(line, 120, y + 130 + i * 54));
     ctx.fillStyle = data.taskPassed ? GAIN : DIM;
     ctx.font = font(30);
-    ctx.fillText(data.taskPassed ? "做成了" : "没算过", 120, y + 130 + lines.length * 54 + 22);
+    ctx.fillText(data.taskPassed ? "任务成功" : "大家觉得不算完成", 120, y + 130 + lines.length * 54 + 22);
   } else {
     // 没领到任务的人也能分享，这里画成涂黑条而不是留白
     ctx.fillStyle = REDACT;
@@ -140,7 +140,7 @@ function draw(canvas: HTMLCanvasElement, data: ShareCardData): void {
   ctx.fillRect(624, H - 150, 200, 26);
   ctx.fillStyle = DIM;
   ctx.font = font(26, "500");
-  ctx.fillText("别让人看见。", 80, H - 80);
+  ctx.fillText("秘密任务完成。", 80, H - 80);
 }
 
 export default function ShareResultCard({ data, onClose }: { data: ShareCardData; onClose: () => void }) {
@@ -186,7 +186,7 @@ export default function ShareResultCard({ data, onClose }: { data: ShareCardData
         {url ? (
           <img src={url} alt="我的战果" className="w-full rounded-2xl border border-line" />
         ) : (
-          <p className="text-dim">正在画…</p>
+          <p className="text-dim">正在生成分享图…</p>
         )}
         {/* 手机上 a download 基本不生效，长按存图才是那条真路 */}
         <p className="text-center text-[13px] text-dim">长按图片保存到相册</p>
@@ -195,7 +195,7 @@ export default function ShareResultCard({ data, onClose }: { data: ShareCardData
           onClick={onClose}
           className="min-h-12 w-full rounded-full border border-line font-bold text-bright"
         >
-          关掉
+          关闭
         </button>
       </div>
     </div>

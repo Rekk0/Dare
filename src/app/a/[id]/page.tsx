@@ -25,12 +25,12 @@ interface Participant {
 
 /** 每个状态说一句人话，并指出下一个节点是哪个时间字段。settled 没有下一个节点 */
 const STATES: Record<Status, { text: string; next?: keyof Activity }> = {
-  recruiting: { text: "大家正在交题", next: "taskDeadline" },
+  recruiting: { text: "大家正在出题", next: "taskDeadline" },
   locked: { text: "题目锁定，正在分配", next: "startAt" },
   assigned: { text: "任务已发，等开场", next: "startAt" },
-  running: { text: "暗任务进行中", next: "endAt" },
-  voting: { text: "现在投票", next: "voteDeadline" },
-  settled: { text: "这一局结了" },
+  running: { text: "秘密任务进行中", next: "endAt" },
+  voting: { text: "正在投票", next: "voteDeadline" },
+  settled: { text: "活动已经结算" },
 };
 
 /**
@@ -110,7 +110,6 @@ export default function ActivityPage() {
   return (
     <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
       <a href="/" className="text-[13px] text-dim">&lt; 回首页</a>
-      <p className="mt-6 text-[12px] tracking-[.3em] text-mark">这一局</p>
       <h1 className="mt-3 text-3xl font-bold text-bright">{activity.title}</h1>
 
       {out ? (
@@ -123,7 +122,7 @@ export default function ActivityPage() {
             {state.text}
             {countdown ? (
               <span className="text-dim">
-                ，离下个节点 <span className="tabular-nums text-bright">{countdown}</span>
+                ，离下个节点还有 <span className="tabular-nums text-bright">{countdown}</span>
               </span>
             ) : null}
           </p>
@@ -163,11 +162,11 @@ export default function ActivityPage() {
       )}
 
       <section className="mt-8 rounded-2xl border border-line bg-surface p-4">
-        <p className="text-[13px] text-dim">这局有谁 · {participants.length} 人</p>
+        <p className="text-[13px] text-dim">参与者 · {participants.length} 人</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {participants.map((participant) => (
             <span key={participant.pid} className={`rounded-full border px-3 py-1 text-[13px] ${participant.eliminatedAt ? "border-alarm text-alarm line-through" : "border-line text-body"}`}>
-              {participant.nickname}{participant.eliminatedAt ? " 已出局" : ""}
+              {participant.nickname}{participant.eliminatedAt ? " 已被识破" : ""}
             </span>
           ))}
         </div>
@@ -178,11 +177,11 @@ export default function ActivityPage() {
           label={hasTask ? "改题" : "出题"}
           href={`/a/${id}/task`}
           enabled={is("recruiting")}
-          why={hasTask ? "题已经交了，截止后锁死" : "交题截止后就锁死了"}
+          why={hasTask ? "题已经交了，出题时间截止后锁死" : "出题截止后就锁死了"}
           note={hasTask ? "已经交过一道，截止前还能改" : undefined}
         />
         <Entry label="我的任务卡" href={`/a/${id}/card`} enabled={is("assigned", "running", "voting", "settled")} why="等交题截止后分配" />
-        <Entry label="猜别人的任务" href={`/a/${id}/guess`} enabled={is("running")} why="开场后才能猜" />
+        <Entry label="猜别人的任务" href={`/a/${id}/guess`} enabled={is("running")} why="活动开始后才能猜" />
         <Entry label="投票" href={`/a/${id}/vote`} enabled={is("voting", "settled")} why="活动结束后开投票" />
         <Entry label="看结果" href={`/a/${id}/result`} enabled={is("settled")} why="投票结束后出结果" />
       </section>

@@ -61,11 +61,11 @@ export default function GuessPage() {
 
   return (
     <main className="mx-auto flex min-h-[100dvh] max-w-[420px] flex-col px-5 py-8">
-      <a href={`/a/${id}`} className="text-[13px] text-dim">&lt; 回这一局</a>
-      <p className="mt-6 text-[12px] tracking-[.3em] text-mark">猜测</p>
-      <h1 className="mt-3 text-3xl font-bold text-bright">你觉得他在干嘛？</h1>
+      <a href={`/a/${id}`} className="text-[13px] text-dim">&lt; 返回活动页</a>
+      <p className="mt-6 text-[12px] tracking-[.3em] text-mark">识破其他人</p>
+      <h1 className="mt-3 text-3xl font-bold text-bright">你觉得ta在干嘛？</h1>
       <p className="mt-3 text-[14px] leading-6 text-dim">
-        猜中了，他那一份归你一部分。猜错不扣，但配额有限。
+        识破任务后，执行者立即任务失败；并且你获得ta的部分奖励，猜错不扣，但机会有限。
       </p>
 
       <form onSubmit={submit} className="mt-8 flex flex-1 flex-col gap-4">
@@ -104,7 +104,7 @@ export default function GuessPage() {
           </button>
           {pending ? (
             <div className="mt-4">
-              <AiThinking label="AI 正在比对你猜的和他的题" />
+              <AiThinking label="AI 正在比对你的猜测和他的任务原文" />
             </div>
           ) : null}
           {error ? (

@@ -14,9 +14,9 @@ describe("BustedScreen", () => {
     render(<BustedScreen />);
     expect(screen.getByText("暴露了")).not.toBeNull();
     expect(screen.getByText("BUSTED")).not.toBeNull();
-    expect(screen.getByText("你的任务已经被人猜中。")).not.toBeNull();
-    expect(screen.getByText("这一份，没了。")).not.toBeNull();
-    expect(screen.getByText("是谁猜中的，结算时揭晓。")).not.toBeNull();
+    expect(screen.getByText("你的任务已经被识破。")).not.toBeNull();
+    expect(screen.getByText("任务失败，奖励丢失。")).not.toBeNull();
+    expect(screen.getByText("识破者在结算时揭晓。")).not.toBeNull();
   });
 
   it("两个按钮触发对应回调", () => {
@@ -39,7 +39,7 @@ describe("BustedScreen", () => {
     vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
     render(<BustedScreen />);
     expect(screen.getByText("暴露了")).not.toBeNull();
-    expect(screen.getByText("是谁猜中的，结算时揭晓。")).not.toBeNull();
+    expect(screen.getByText("识破者在结算时揭晓。")).not.toBeNull();
     vi.unstubAllGlobals();
   });
 });

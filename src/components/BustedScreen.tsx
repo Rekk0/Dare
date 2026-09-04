@@ -49,7 +49,7 @@ export default function BustedScreen({ onContinue, onDismiss }: BustedScreenProp
       <div className="busted-content">
         <h1 className="busted-title">暴露了</h1>
         <p className="busted-kicker">BUSTED</p>
-        <div className="busted-copy"><p>你的任务已经被人猜中。</p><p>这一份，没了。</p><p>是谁猜中的，结算时揭晓。</p></div>
+        <div className="busted-copy"><p>你的任务已经被识破。</p><p>任务失败，奖励丢失。</p><p>识破者在结算时揭晓。</p></div>
         <div className="busted-actions"><button type="button" onClick={onContinue}>为面子继续</button><button type="button" onClick={onDismiss}>知道了</button></div>
       </div>
     </main>
