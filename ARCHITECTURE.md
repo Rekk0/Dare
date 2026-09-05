@@ -1,7 +1,7 @@
 # Dare — 架构
 
 > 稳定参考文档。技术形状变了才改这里。
-> 配套：[project-design.md](project-design.md)（产品与机制）。
+> 配套：[project-design.md](project-design.md)（产品与机制的权威定义）、[DEPLOY.md](DEPLOY.md)（部署）。
 
 ---
 
@@ -69,7 +69,7 @@ src/
     validate.ts            三档结构化输出降级，统一 parseAndValidate
     registry.ts            读 providers.yaml，按 route 取 provider
     adapters/
-      openai-compatible.ts 一个适配器覆盖百炼/智谱/硅基流动等一大片
+      openai-compatible.ts 一个适配器覆盖所有 OpenAI 格式端点，含自建服务
       mock.ts              必需品：CI 和贡献者不烧钱不用 key
     tasks/
       taskReview.ts        出题预审
@@ -217,30 +217,46 @@ prompt_only  prompt 贴 schema + few-shot，抽 json 块，zod 校验，重试 2
 ## 7. 环境与配置
 
 ```bash
-DATABASE_URL=postgres://...
-REDIS_URL=redis://...
-S3_ENDPOINT= S3_BUCKET= S3_ACCESS_KEY= S3_SECRET_KEY=
-GOOGLE_API_KEY=          # 默认 provider
-ANTHROPIC_API_KEY=       # 可选
-DASHSCOPE_API_KEY=       # 可选
-AI_PROFILE=mock          # mock | live，CI 和本地开发用 mock 不烧钱
+DATABASE_URL=postgres://...      # 留空则用 PGlite，单进程才够用
+PUBLIC_BASE_URL=https://...      # 证据 URL 交给厂商去拉，必须公网可达
+STORAGE_SIGNING_SECRET=          # 不设则进程重启后签名 URL 全部失效
+RETENTION_DAYS=7
+AI_PROFILE=mock                  # mock | live，CI 和本地开发用 mock 不烧钱
 ```
 
-`providers.yaml` 按场景路由：
+**AI 的 key 和端点没有固定变量名**，由 `providers.yaml` 里每个 provider 的
+`apiKeyEnv` / `baseUrlEnv` 决定。完整清单见 `.env.example`。
+
+`providers.yaml` 声明 provider 并按场景路由。**adapter 只有两个**：
+`openai-compatible`（任何 OpenAI Chat Completions 格式的端点，商业平台和自建服务通吃）
+和 `mock`。
 
 ```yaml
-default: gemini
+default: 主 provider
 providers:
-  gemini:   { adapter: google-genai,      model: gemini-2.5-pro, apiKeyEnv: GOOGLE_API_KEY }
-  claude:   { adapter: anthropic,         model: claude-opus-5,  apiKeyEnv: ANTHROPIC_API_KEY }
-  mock:     { adapter: mock }
+  主 provider:
+    adapter: openai-compatible
+    model: 模型名
+    apiKeyEnv: MY_API_KEY
+    baseUrl: https://…/v1        # 或 baseUrlEnv 从环境变量读
+    stream: true
+    caps:
+      media:  { image: native, audio: transcode, video: frames }
+      limits: { maxImages: 64, maxImageBytes: 5242880, maxAudioSeconds: 3600,
+                maxVideoSeconds: 300, maxVideoBytes: 209715200, maxInlineBytes: 5242880 }
+      structuredOutput: json_mode   # json_schema | json_mode | prompt_only
+      fileUpload: false
+  mock: { adapter: mock }
 routes:
-  taskReview:     gemini
-  evidenceReview: gemini
-  guessJudge:     gemini
+  taskReview:     主 provider
+  evidenceReview: 主 provider
+  guessJudge:     主 provider
 fallback:
-  evidenceReview: [claude]
+  evidenceReview: [备用 provider]
 ```
+
+`media` 的取值：`native` 直接吃、`frames` 本地抽帧转图、`transcode` 本地 ASR 转文本、
+`unsupported` 放弃。仓库里 `providers.yaml` 带的那份是能跑的示例，不是推荐配置。
 
 **仓库不含任何 key**，只给 `.env.example`。`MockProvider` 是必需品，不是可选项。
 
