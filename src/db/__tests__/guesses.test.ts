@@ -52,7 +52,7 @@ describe("submitGuess", () => {
 
   it("出题人猜中自己出的题会作废但消耗配额且不触发 busted", async () => {
     const result = await submitGuess(db, params({ guesserPid: "p1", targetPid: "p2" }));
-    expect(result).toEqual({ outcome: "hit", quotaLeft: 2 });
+    expect(result).toEqual({ outcome: "hit", quotaLeft: 2, quotaTotal: 3 });
     const state = await db.execute<{ voided: boolean; rank: number | null; status: string }>(`
       SELECT g.voided, g.rank, a.status FROM guesses g JOIN assignments a ON a.activity_id = g.activity_id AND a.assignee_pid = g.target_pid
     `);

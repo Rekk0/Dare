@@ -101,7 +101,8 @@ export async function submitGuess(db: Db, params: SubmitGuessParams): Promise<Gu
     }
 
     const quotaLeft = activity.guessQuota - used - 1;
-    if (!hit || voided || rank === null) return { outcome, quotaLeft };
-    return { outcome, quotaLeft, rank, bountyShares: params.bountyTiers[rank - 1] ?? 0 };
+    const quotaTotal = activity.guessQuota;
+    if (!hit || voided || rank === null) return { outcome, quotaLeft, quotaTotal };
+    return { outcome, quotaLeft, quotaTotal, rank, bountyShares: params.bountyTiers[rank - 1] ?? 0 };
   });
 }

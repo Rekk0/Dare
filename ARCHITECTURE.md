@@ -7,43 +7,57 @@
 
 ## 1. 技术栈（已定稿）
 
+下面这张表是**实际在跑的东西**，不是计划。想加什么先看它解决了哪个真问题。
+
 | 层 | 选型 | 定这个的理由 |
 |---|---|---|
-| 框架 | Next.js 16 App Router + TypeScript | 移动端 Web，扫码即用，无应用商店审核。对「线下临时开一局」是决定性优势 |
-| 样式 | Tailwind v4，色值走 CSS 变量 | 变量表见 DESIGN.md §1 |
-| 动效 | `motion/react` | 不引 GSAP：本项目没有滚动叙事需求 |
-| 图标 | `@phosphor-icons/react`，strokeWidth 1.5 | 单一图标族 |
-| 组件 | shadcn/ui 打底，必须改默认圆角/配色/字体 | 不允许原样使用 |
-| 后端 | Next.js Route Handlers（同仓） | N ≤ 12、并发极低，不需要独立服务 |
-| 数据库 | Postgres + Drizzle ORM。**本地用 PGlite** | 分配和结算需要事务。见下方「本机没有 docker」 |
-| 对象存储 | S3 兼容（本地 MinIO / 线上 R2） | 预签名直传，大视频不过 app server |
-| 队列 | BullMQ + Redis | AI 调用、媒体处理是慢任务 |
-| AI | 自研 provider 抽象层，默认 Gemini | 开源不绑厂商，见 §4 |
-| 部署 | 单机 Docker Compose | 用户量决定了不需要 k8s |
+| 框架 | Next.js 16.3.4 App Router + TypeScript | 移动端 Web，扫码即用，无应用商店审核。对「线下临时开一局」是决定性优势 |
+| 样式 | Tailwind v4，色值走 CSS 变量 | 无 UI 组件库。全部手写，因为这个产品的视觉不能有模板感 |
+| 动效 | 纯 CSS keyframes | 没引任何动效库。要的效果就那几个，不值一个依赖 |
+| 后端 | Next.js Route Handlers（同仓） | N ≤ 21、并发极低，不需要独立服务 |
+| 数据库 | Postgres + Drizzle ORM，本地用 PGlite | 分配和结算需要事务。见下方「本机没有 docker」 |
+| 存储 | 本地文件系统 + HMAC 签名 URL | 走 `StoragePort` 接口，换 S3 只需要再写一个驱动 |
+| 队列 | 没有 | AI 调用在请求内同步等（实测 2 到 5 秒），状态推进靠 scheduler 30 秒轮询 |
+| AI | 自研 provider 抽象层，两个 adapter | 开源不绑厂商，见 §4 |
+| 测试 | vitest + fast-check | `core/` 的守恒与可见性要 property test 穷举 |
+| 部署 | 裸机 systemd，两个进程 + nginx 反代 | 见 [DEPLOY.md](DEPLOY.md) |
 
-> **实际落地（2026-09-02）**：Next.js **16.3.4**、Tailwind v4、vitest 4、fast-check 4、
-> drizzle-orm 0.45、@electric-sql/pglite 0.5。
->
-> **本机没有 docker。** 本地开发与测试用 **PGlite**（Postgres 编译成 WASM，进程内跑，真 Postgres 语义），
-> 生产仍是真 Postgres，**schema 保持 Postgres 方言**，不为迁就 PGlite 改类型。
-> Redis / MinIO 同理推迟到真正需要它们的里程碑（M3 队列、M4 对象存储）再决定怎么替代。
+**本机没有 docker。** 本地开发与测试用 PGlite（Postgres 编译成 WASM，进程内跑，
+真 Postgres 语义），生产仍是真 Postgres，**schema 保持 Postgres 方言**，
+不为迁就 PGlite 改类型。
+
+### 设计时想过但没有做的
+
+留在这里是为了说明「为什么没有」，不是待办：
+
+- **BullMQ + Redis 队列**。AI 调用同步等就够了，加队列等于多一个必须常驻的进程和一个必须运维的 Redis。等到真的有并发压力再说。
+- **S3 / R2 对象存储**。`StoragePort` 接口已经把它隔开了，但单机部署下本地磁盘更简单，也更符合「数据不出你的机器」这个卖点。
+- **UI 组件库**。用了就有模板感，这个产品最不能有的就是模板感。
 
 ---
 
 ## 2. 进程模型
 
+**只有两个进程**，`pnpm start` 和 `pnpm scheduler`，systemd 各托管一个。
+
 ```
-web       Next.js（页面 + API Route Handlers）
-worker    BullMQ 消费者
-            ai.taskReview      出题预审（同步等待，但走队列保证重试）
-            ai.evidenceReview  证据评审
-            ai.guessJudge      猜测判定
-            media.transcode    ffmpeg 抽帧 / ASR - Phase 2 才有
+web        Next.js（页面 + API Route Handlers）
+             ai.taskReview      出题预审，在请求内同步等
+             ai.evidenceReview  证据评审，上传后触发
+             ai.guessJudge      猜测判定，在请求内同步等
 scheduler  30s 轮询推进 activity 状态
-            locked        → 执行分配
-            end_at        → voting
-            vote_deadline → settle
+             locked        → 执行分配
+             end_at        → voting
+             vote_deadline → settle
+             另外每小时清一次过期活动的数据和证据文件
 ```
+
+**scheduler 必须单独跑。** 不跑的话活动永远停在 `recruiting`，而且前端不会有任何
+报错，只是什么都不发生。
+
+例外：`DATABASE_URL` 为空时（PGlite 单进程模式）`src/instrumentation.ts` 会把
+scheduler 跑在 web 进程里兜底，因为 PGlite 是进程内单连接的，两个进程共享不了
+同一个库。配了 `DATABASE_URL` 就不在那里跑，交给 systemd。
 
 **scheduler 的每一步都必须幂等**：`UPDATE activities SET status=$next WHERE id=$id AND status=$expected RETURNING *`，
 拿到行才继续。worker 重启不会重复分配、不会重复发钱。

@@ -143,6 +143,12 @@ export function canVote(v: Viewer, a: AssignmentFacts): boolean {
 export interface GuessResultDto {
   outcome: "hit" | "close" | "cold";
   quotaLeft: number;
+  /**
+   * 这一局每人一共几次。**必须下发**：配额是 guessQuotaFor(人数) 算出来的，
+   * 9 人以上就不是 3 了，界面写死分母会显示成「剩 5 / 3」。
+   * 不算泄密，人数本来就在名单里公开。
+   */
+  quotaTotal: number;
   /** 命中时才有。他需要知道抢到第几名才能判断还值不值得继续猜 */
   rank?: number;
   bountyShares?: number;

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * 整块涂黑的任务卡内容。规格见 DESIGN.md §6.1。
+ * 整块涂黑的任务卡内容。
  *
  * 两种手势防的不是同一个威胁：
  *   按住 800ms  全文显示，松手瞬间盖回：防「什么时候看」，你自己挑安全时机
