@@ -59,6 +59,68 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ---------- 记号笔高光 ----------
+   首页把三句话里的关键词划出来。用的是标识那支笔：同一支黄、
+   同一个 -1.2deg 倾角，一眼看得出跟 DareLogo 是一套东西。
+
+   不换字体。得意黑子集里没有「秘密奖励」这几个字，源字体不在仓库，
+   用了会静默掉回系统字，四个字里两个一种样子。冲击力靠笔画和字重给。 */
+
+.hl {
+  position: relative;
+  display: inline-block;
+  /* 左右只留一点点。留多了笔画会胀成一个标签，不像划过去的一道 */
+  padding: 0 0.12em;
+  /* 盖掉 <mark> 的浏览器默认黄底黑字 */
+  background: none;
+  /* 黄底一律配 --ground 深色字，绝不配白字 */
+  color: var(--ground);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  /* 划出来的词被折行会把笔画劈成两截 */
+  white-space: nowrap;
+  /* 必须自己收住行高。inline-block 的盒高取的是继承来的 line-height，
+     正文那边给到 leading-10 就是 40px，笔画会照着 40px 铺，
+     结果高出字一大截，看着是个标签不是划痕。 */
+  line-height: 1.1;
+}
+
+/* 笔画分两道叠加：一道铺满，一道压在下三分之一颜色更沉，
+   模拟记号笔来回两遍重叠出的那条边。少了这道就是个纯色矩形。 */
+.hl::before,
+.hl::after {
+  content: "";
+  position: absolute;
+  transform: rotate(-1.2deg);
+}
+
+/* 顶端比字顶低一点、底端压过基线，两端各多探出一截。
+   笔画高过文字的话看着就是个色块，不是划痕。 */
+.hl::before {
+  inset: 0.02em -0.1em -0.02em -0.12em;
+  background: var(--mark);
+  border-radius: 2px;
+  /* 起笔收笔是斜的，不是刀切出来的直角 */
+  clip-path: polygon(0.8% 5%, 100% 0, 99.2% 95%, 0 100%);
+}
+
+/* 第二道压在笔画里面，不探出去。探出去就成了投影，
+   看着像贴了张便签，不像同一支笔来回划了两遍。 */
+.hl::after {
+  inset: auto 0 0 0;
+  height: 0.32em;
+  background: var(--mark-deep);
+  opacity: 0.45;
+  clip-path: polygon(2% 0, 100% 9%, 98% 100%, 0 91%);
+}
+
+/* 字要压在笔画上面。::before / ::after 是定位元素，
+   不给正文单独提一层的话会被盖住。 */
+.hl > span {
+  position: relative;
+  z-index: 1;
+}
+
 /* ---------- Redacted 组件 ----------
    规格见 DESIGN.md §6.1。两种手势：
      按住 800ms  全文显示，松手瞬间盖回

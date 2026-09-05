@@ -14,12 +14,13 @@ export default function Home() {
         <DareLogo className="w-full max-w-[300px]" />
         {/* 不设 max-w：最长一句 13 个字，420px 的壳里放得下，
             限宽反而会把一句话折成两行 */}
-        <p className="mt-8 text-[17px] leading-8 text-body">
-          发布秘密任务，悄悄完成任务
+        {/* leading 比正文松：三行里两行带笔画，行距不给够笔画会贴上一行 */}
+        <p className="mt-8 text-[17px] leading-10 text-body">
+          发布<mark className="hl"><span>秘密任务</span></mark>，悄悄完成任务
           <br />
-          完成任务，领取奖励
+          完成任务，领取<mark className="hl"><span>奖励</span></mark>
           <br />
-          破解别人任务，夺取奖励
+          破解别人任务，夺取<mark className="hl"><span>奖励</span></mark>
         </p>
       </div>
 
