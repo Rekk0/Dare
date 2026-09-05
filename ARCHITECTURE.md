@@ -18,7 +18,7 @@
 | 数据库 | Postgres + Drizzle ORM，本地用 PGlite | 分配和结算需要事务。见下方「本机没有 docker」 |
 | 存储 | 本地文件系统 + HMAC 签名 URL | 走 `StoragePort` 接口，换 S3 只需要再写一个驱动 |
 | 队列 | 没有 | AI 调用在请求内同步等（实测 2 到 5 秒），状态推进靠 scheduler 30 秒轮询 |
-| AI | 自研 provider 抽象层，两个 adapter | 开源不绑厂商，见 §4 |
+| AI | 自研 provider 抽象层，两个 adapter | 不绑定任何厂商，部署者自选，见 §4 |
 | 测试 | vitest + fast-check | `core/` 的守恒与可见性要 property test 穷举 |
 | 部署 | 裸机 systemd，两个进程 + nginx 反代 | 见 [DEPLOY.md](DEPLOY.md) |
 
@@ -288,9 +288,11 @@ pnpm providers:check          # 厂商能力自检（需要真 key）
 
 ---
 
-## 9. 开源约束
+## 9. 公开发布的约束
 
-- 无 telemetry。证据是用户隐私内容，**自部署时数据完全留在部署者机器上，这是相对闭源竞品的真实优势**，README 要写。
-- `docker compose up` 一条命令起全栈。
-- 明确说明：本项目不提供纯本地零成本方案，多模态判定必须外接商用 API，部署者自带 key。
-- 内置每活动 AI 调用次数上限，防部署者的 key 被刷。
+协议是 PolyForm Noncommercial 1.0.0：源码公开、禁止商用，**不是 OSI 认可的开源协议**。
+
+- 无 telemetry。证据是用户隐私内容，**自部署时数据完全留在部署者机器上，这是相对闭源竞品的真实优势**。
+- 部署走裸机 systemd，不是 docker，见 [DEPLOY.md](DEPLOY.md)。
+- 明确说明：多模态判定必须外接 API，部署者自带 key。
+- **待做**：每活动 AI 调用次数上限，防部署者的 key 被刷。目前没有这个保护。
