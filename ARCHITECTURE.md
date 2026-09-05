@@ -1,4 +1,4 @@
-# Dare — 架构
+# Dare - 架构
 
 > 稳定参考文档。技术形状变了才改这里。
 > 配套：[project-design.md](project-design.md)（产品与机制的权威定义）、[DEPLOY.md](DEPLOY.md)（部署）。
@@ -38,7 +38,7 @@ worker    BullMQ 消费者
             ai.taskReview      出题预审（同步等待，但走队列保证重试）
             ai.evidenceReview  证据评审
             ai.guessJudge      猜测判定
-            media.transcode    ffmpeg 抽帧 / ASR —— Phase 2 才有
+            media.transcode    ffmpeg 抽帧 / ASR - Phase 2 才有
 scheduler  30s 轮询推进 activity 状态
             locked        → 执行分配
             end_at        → voting
@@ -142,7 +142,7 @@ interface ProviderCapabilities {
 }
 ```
 
-`caps` 由 `providers.yaml` 声明，**不硬编码**。用 `scripts/providers-check.ts` 实测校验——
+`caps` 由 `providers.yaml` 声明，**不硬编码**。用 `scripts/providers-check.ts` 实测校验，
 厂商到底支不支持视频，让代码去问，不靠文档也不靠记忆。
 
 ### 结构化输出的三档降级
@@ -164,7 +164,7 @@ prompt_only  prompt 贴 schema + few-shot，抽 json 块，zod 校验，重试 2
 | # | 不变量 | 强制手段 |
 |---|---|---|
 | I1 | **每题恰好 1 份**：`to_assignee + to_guessers + forfeited = 1` | DB CHECK 约束 + `settle.ts` 单测 |
-| I2 | **全场总额守恒**：`Σ payouts.total + Σ forfeited = assignments.length`。注意分母是**任务数不是人数** —— 有旁观者（未出题者仍可投票和猜）时人数 > 任务数 | 结算后断言 + property test（随机命中/投票组合） |
+| I2 | **全场总额守恒**：`Σ payouts.total + Σ forfeited = assignments.length`。注意分母是**任务数不是人数** - 有旁观者（未出题者仍可投票和猜）时人数 > 任务数 | 结算后断言 + property test（随机命中/投票组合） |
 | I3 | **分配是 derangement**：无人拿到自己出的题，且一一对应 | `assign.ts` 单测 + 两个 DB 唯一索引 |
 | I4 | **`running` 期间任务正文只对执行者可见** | 全部读查询经过 `visibility.ts`；每条可见性规则一个测试 |
 | I5 | **出题者永远不知道自己的题给了谁**（直到 `settled`） | 同上 |

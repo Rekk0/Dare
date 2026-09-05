@@ -11,7 +11,7 @@ export function errorStatus(error: unknown): number {
  * 未知错误绝不回显给客户端：错误信息里可能夹着任务正文。
  *
  * 但**必须往服务端日志写**。第一版只吞不记，结果线上 500 之后
- * 服务器日志里一片空白，完全没法查 —— 冒烟测试时就是这么卡住的。
+ * 服务器日志里一片空白，完全没法查 - 冒烟测试时就是这么卡住的。
  * 「不泄露给客户端」和「不记录」是两回事。
  */
 export function apiError(error: unknown): Response {

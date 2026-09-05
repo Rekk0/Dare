@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-字体子集化 — Spike B
+字体子集化 - Spike B
 
 得意黑（Smiley Sans）全量 woff2 约 1.1MB，作为 display 字体给移动端首屏用太重。
 但它只需要渲染几十个固定的字：「暴露了」「猜中了」这类情绪节点文案 + 数字。

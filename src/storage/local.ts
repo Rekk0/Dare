@@ -9,7 +9,7 @@ import type { SignedUpload, StoragePort } from "./types";
  *
  * 进程启动时随机生成，所以**进程重启后所有未过期的签名 URL 立刻失效**。
  * 单进程开发环境可以接受（TTL 才 5 分钟），但生产必须从环境变量读，
- * 多实例部署更是必须 —— 否则实例 A 签的 URL 到实例 B 验不过。
+ * 多实例部署更是必须 - 否则实例 A 签的 URL 到实例 B 验不过。
  * M7 部署时处理。
  */
 const signingSecret = process.env.STORAGE_SIGNING_SECRET

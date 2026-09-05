@@ -152,7 +152,7 @@ export class OpenAiCompatibleProvider implements AiProvider {
      * 只有 json_schema 档的厂商能靠原生 schema 约束保证字段齐全；
      * json_mode 只保证返回合法 JSON，**不保证字段对**。实测阿里百炼
      * 会随机漏掉 fun、reasons、suggestions 这些字段，一个个打补丁
-     * 是打不完的 —— 得让模型先看到完整形状。
+     * 是打不完的 - 得让模型先看到完整形状。
      */
     const systemWithShape =
       schemaHint && this.caps.structuredOutput !== "json_schema"

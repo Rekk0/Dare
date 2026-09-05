@@ -9,7 +9,7 @@ import { advanceActivity } from "@/db/queries/lifecycle";
  * startAt，一等十几分钟，节奏完全没法接受。这个接口跳过等待。
  *
  * **默认关闭**，必须显式设 `ENABLE_DEV_TOOLS=1` 才启用。
- * 生产环境绝不要设这个变量 —— 能随意推进状态就意味着能提前触发结算。
+ * 生产环境绝不要设这个变量 - 能随意推进状态就意味着能提前触发结算。
  *
  * 注意它调的仍然是 advanceActivity，走同一套 CAS 和事务，
  * 不是绕过业务逻辑的后门，只是省掉等时间。
